@@ -1,6 +1,9 @@
 # {{ project_name }} — task runner
 # Run `just` to list available recipes.
 
+# Use PowerShell on Windows; keep the default sh on Unix.
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+
 default:
     @just --list
 
