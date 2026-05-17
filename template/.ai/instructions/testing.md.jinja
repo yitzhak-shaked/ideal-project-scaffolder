@@ -1,0 +1,50 @@
+# Testing
+
+## Where each kind of test lives
+
+```
+tests/unit/         Pure function and class tests. Fast. No I/O.
+tests/integration/  Cross-module tests that exercise a bounded context end
+                    to end (e.g. use case + real repository against a test DB).
+tests/e2e/          Black-box tests through the public boundary
+                    (HTTP, CLI, hardware interface).
+tests/performance/  Benchmarks, profiling harnesses, load tests.
+```
+
+{% if 'rust' in languages %}
+For Rust, **unit tests live inline** in `#[cfg(test)] mod tests { ... }` blocks
+next to the code they test. `tests/unit/` exists only as a convention placeholder
+and may stay empty (or `_unit/`).
+{% endif %}
+
+## What to test
+
+- **Domain logic**: thorough unit coverage. Edge cases, invariants, error paths.
+- **Use cases**: integration tests against real adapters where feasible
+  (real DB in a container, real HTTP server). Mocks are a code smell here —
+  they tend to mask integration bugs.
+- **Adapters**: integration tests verify the adapter speaks the external
+  protocol correctly.
+- **Presentation**: e2e tests prove the wiring works end to end. Keep these
+  small in number; rely on lower layers for coverage.
+
+## What NOT to test
+
+- Trivial getters/setters.
+- Third-party library behavior (test your usage of it, not the library itself).
+- Implementation details that would force the test to change every time the
+  code is refactored.
+
+## Conventions
+
+- Test names describe behavior: `returns_error_when_user_already_exists`.
+- One logical assertion per test. Multiple `assert` lines that verify one
+  outcome are fine; testing two unrelated outcomes in one test is not.
+- Arrange / Act / Assert layout, blank lines between phases.
+- No `sleep()` for timing. Use deterministic clocks / event waiters.
+
+## Running
+
+- `just test` runs all language test suites.
+- Each language has its own recipe (`just py-test`, `just rust-test`, etc.).
+- CI runs the same recipes — keep them green locally before pushing.

@@ -1,0 +1,39 @@
+---
+name: update-changelog
+description: Add an entry to CHANGELOG.md for a user-facing change. Use before committing any change that affects behavior, API, or configuration.
+---
+
+# Update changelog
+
+This project keeps a CHANGELOG.md at the repo root following
+[Keep a Changelog](https://keepachangelog.com/) format.
+
+When invoked:
+
+1. Read CHANGELOG.md. If an `## [Unreleased]` section exists, add to it.
+   Otherwise create one at the top, above the most recent released version.
+2. Categorize the change under one of:
+   - **Added** — new features
+   - **Changed** — changes to existing functionality
+   - **Deprecated** — soon-to-be removed features
+   - **Removed** — removed features
+   - **Fixed** — bug fixes
+   - **Security** — security-relevant changes
+3. Write the entry as one line, past tense, user-facing language. Reference
+   issue/PR numbers if known.
+
+Skip the changelog for: internal refactors with no user impact, test-only
+changes, dependency bumps unless they change behavior, doc fixes.
+
+If CHANGELOG.md does not exist, create it with the standard header:
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+```

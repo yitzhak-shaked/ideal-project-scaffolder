@@ -1,0 +1,24 @@
+---
+name: lint-and-format
+description: Run the project's linters and formatters. Use after making code changes, before suggesting a commit, or when the user asks about code style.
+---
+
+# Lint and format
+
+Run `just lint` to check for lint violations across all languages in this
+project. For automatic formatting, use the language-specific recipe:
+
+{% if 'rust' in languages %}- Rust: `just rust-fmt` (format), `just rust-lint` (clippy)
+{% endif %}{% if 'python' in languages %}- Python: `just py-fmt` (ruff format), `just py-lint` (ruff check), `just py-typecheck` (mypy)
+{% endif %}{% if 'typescript' in languages %}- TypeScript: `just ts-lint`
+{% endif %}
+
+Workflow:
+1. Run `just lint` first to see what's broken.
+2. Apply the language-specific formatter (`just <lang>-fmt`) if the issues
+   are formatting-related.
+3. For remaining lint errors, fix them in the source rather than disabling
+   the rule. Disabling a rule needs an inline comment explaining why.
+
+Report back with: number of issues found, number auto-fixed, and what
+remains for manual attention.

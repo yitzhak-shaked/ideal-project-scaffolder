@@ -1,0 +1,24 @@
+{
+  "recommendations": [
+{%- set recs = [] -%}
+{%- if 'python' in languages -%}
+{%- set _ = recs.append('    "charliermarsh.ruff"') -%}
+{%- set _ = recs.append('    "ms-python.python"') -%}
+{%- endif -%}
+{%- if 'rust' in languages -%}
+{%- set _ = recs.append('    "rust-lang.rust-analyzer"') -%}
+{%- endif -%}
+{%- if 'typescript' in languages -%}
+{%- set _ = recs.append('    "dbaeumer.vscode-eslint"') -%}
+{%- set _ = recs.append('    "esbenp.prettier-vscode"') -%}
+{%- endif -%}
+{%- if 'cpp' in languages -%}
+{%- set _ = recs.append('    "llvm-vs-code-extensions.vscode-clangd"') -%}
+{%- endif -%}
+{%- if ai_agent == 'copilot' -%}
+{%- set _ = recs.append('    "github.copilot"') -%}
+{%- set _ = recs.append('    "github.copilot-chat"') -%}
+{%- endif %}
+{{ recs | join(',\n') }}
+  ]
+}

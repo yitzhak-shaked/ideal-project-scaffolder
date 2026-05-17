@@ -1,0 +1,66 @@
+# Architecture
+
+This project follows a Domain-Driven Design layering with four bounded
+contexts under `src/`. The rules below are enforced by convention and code
+review — there is no automated dependency checker (yet).
+
+## Layers
+
+```
+presentation/   (HTTP routers, CLI parsers, ISRs, gRPC servers)
+        |
+        v
+application/    (Use cases, orchestrators, transactions, workflows)
+        |
+        v
+domain/         (Entities, value objects, domain services, interfaces)
+        ^
+        |
+infrastructure/ (DB adapters, HTTP clients, message brokers, drivers)
+                — implements interfaces declared in domain/
+```
+
+## Allowed dependencies
+
+- `domain/` imports from: **nothing internal**. Only the standard library
+  and pure utility crates (e.g. uuid, time).
+- `application/` imports from: `domain/` only.
+- `infrastructure/` imports from: `domain/` (to implement its interfaces).
+- `presentation/` imports from: `application/` and `domain/`.
+
+A presentation layer must **never** import from infrastructure directly —
+wire concrete implementations into use cases at the composition root.
+
+## Forbidden
+
+- Domain code importing a database client, HTTP library, or filesystem.
+- Application code importing presentation-layer types (e.g. HTTP request
+  objects).
+- Cross-layer cycles of any kind.
+
+## Composition root
+
+{% if domain == 'web' %}
+For a web service, the composition root is the entry point that wires
+HTTP routing → use cases → repositories (e.g. `src/presentation/server.rs` /
+`src/presentation/main.py` / `src/presentation/index.ts`).
+{% elif domain == 'cli' %}
+For a CLI utility, the composition root is the entry point that parses
+arguments and wires use cases → adapters (e.g. `src/presentation/cli.rs`).
+{% elif domain == 'embedded' %}
+For embedded firmware, the composition root is the entry point that
+initializes peripherals and dispatches events to use cases.
+{% elif domain == 'library' %}
+For a library / SDK, the composition root is a thin facade exposing a
+stable public API that wires internal use cases to caller-injected
+implementations.
+{% endif %}
+
+## Adding a new feature
+
+1. Model it in `domain/` (entities, value objects, interfaces).
+2. Implement a use case in `application/` that orchestrates domain logic.
+3. Add concrete adapters in `infrastructure/` if external systems are
+   involved.
+4. Expose it via `presentation/`.
+5. Tests follow the same layering — see `testing.md`.

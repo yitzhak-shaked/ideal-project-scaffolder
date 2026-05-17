@@ -1,0 +1,58 @@
+# {{ project_name }} — Claude instructions
+
+<!-- BOOTSTRAP:START -->
+<!-- Fill these in on first project use, then delete this comment block. -->
+**Primary framework(s):**  _(e.g. Actix, FastAPI, Next.js, Embassy)_
+**Key external services:** _(databases, APIs, queues, hardware)_
+**Domain glossary:**       _(terms a new agent must know)_
+<!-- BOOTSTRAP:END -->
+
+## Stack
+
+- **Languages:** {{ languages | join(', ') }}
+- **Domain:** {{ domain }}
+
+## Project conventions
+
+Before answering or editing code, load the relevant convention files:
+
+- @.ai/instructions/coding-conventions.md
+- @.ai/instructions/architecture.md
+- @.ai/instructions/testing.md
+- @.ai/instructions/security.md
+
+These contain the project's coding style, layering rules, test expectations,
+and security posture. Treat them as authoritative — if something here conflicts
+with them, they win.
+
+## Source layout
+
+```
+src/application/      Use cases, services, orchestration
+src/domain/           Pure business logic (entities, value objects, interfaces)
+src/infrastructure/   DB, network, drivers, external adapters
+src/presentation/     Entry points (HTTP routers, CLI, ISRs)
+tests/{unit,integration,e2e,performance}
+```
+
+Empty directories may be prefixed with `_` (e.g. `_e2e/`) — that prefix is
+removed when the directory gets its first real file.
+
+## MCP servers
+
+{% if mcp_servers %}
+The following MCP servers are preconfigured in `.mcp.json`:
+
+{% for server in mcp_servers %}- **{{ server }}** — see `.env.example` for any required env vars
+{% endfor %}
+
+Use `claude mcp list` inside this project to verify they're registered.
+{% else %}
+No MCP servers preconfigured. Add some to `.mcp.json` if needed.
+{% endif %}
+
+## Workflow
+
+- Use the `Justfile` recipes (`just test`, `just lint`) rather than invoking
+  language toolchains directly.
+- See `.claude/skills/` for project-specific Claude Code skills you can invoke.

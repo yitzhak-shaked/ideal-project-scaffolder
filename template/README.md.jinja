@@ -1,0 +1,73 @@
+# {{ project_name }}
+
+{% if project_description %}{{ project_description }}{% else %}_No description yet._{% endif %}
+
+## Stack
+
+- **Languages:** {{ languages | join(', ') }}
+- **Domain:** {{ domain }}
+- **AI agent:** {{ ai_agent }}
+
+## Getting started
+
+{% if 'python' in languages %}
+### Python
+```sh
+uv sync
+just py-test
+```
+{% endif %}
+{% if 'rust' in languages %}
+### Rust
+```sh
+cargo build
+just rust-test
+```
+{% endif %}
+{% if 'typescript' in languages %}
+### TypeScript / Node
+```sh
+npm install
+just ts-test
+```
+{% endif %}
+{% if 'cpp' in languages %}
+### C/C++
+```sh
+just cpp-configure
+just cpp-build
+just cpp-test
+```
+{% endif %}
+
+## Project layout
+
+```
+src/                Bounded-context source (DDD)
+  application/      Use cases, services, workflows
+  domain/           Entities, value objects, interfaces
+  infrastructure/   DB / network / driver adapters
+  presentation/     CLI parsers, HTTP routers, entry points
+tests/              unit / integration / e2e / performance
+docs/               api / architecture / manual / plans
+.ai/                Agent workspace (instructions, skills)
+```
+
+Empty directories are prefixed with `_` until you put something in them
+(e.g. `_e2e/` becomes `e2e/` once you add a file).
+
+## Agent / AI usage
+
+Read [{{ 'CLAUDE.md' if ai_agent == 'claude' and agent_file_style == 'canonical' else 'AGENTS.md' }}]({{ 'CLAUDE.md' if ai_agent == 'claude' and agent_file_style == 'canonical' else 'AGENTS.md' }})
+for the conventions any AI assistant working on this project should follow.
+
+## Environment
+
+Copy `.env.example` to `.env` and fill in. See the MCP-related variables if
+you plan to use the preconfigured servers.
+
+{% if author_name %}
+## Maintainer
+
+{{ author_name }}{% if author_email %} <{{ author_email }}>{% endif %}
+{% endif %}

@@ -1,0 +1,21 @@
+---
+name: run-tests
+description: Run the project's test suite via the Justfile recipe. Use when the user asks to run tests, verify a change, or check CI before pushing.
+---
+
+# Run tests
+
+Run `just test` from the project root. This executes the configured test
+suite for every language in this project.
+
+If a specific language is mentioned, prefer the language-specific recipe:
+
+{% if 'rust' in languages %}- Rust: `just rust-test`
+{% endif %}{% if 'python' in languages %}- Python: `just py-test`
+{% endif %}{% if 'cpp' in languages %}- C/C++: `just cpp-test`
+{% endif %}{% if 'typescript' in languages %}- TypeScript: `just ts-test`
+{% endif %}
+
+After running, summarize: how many tests ran, how many passed/failed, and
+the first failure's message (if any). Do not paste the entire test log
+unless the user asks for it.

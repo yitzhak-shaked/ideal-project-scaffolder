@@ -1,0 +1,101 @@
+_subdirectory: template
+_templates_suffix: .jinja
+_answers_file: .copier-answers.yml
+
+_min_copier_version: "9.0.0"
+
+_tasks:
+  - ["python", "{{ _copier_conf.src_path }}/_hooks/post_generation.py", "{{ _copier_conf.dst_path }}", "{{ ai_agent }}", "{{ agent_file_style }}"]
+
+_message_after_copy: |
+  Project generated.
+
+  Next steps:
+    1. cd into the new directory.
+    2. Review the agent instruction file ({{ 'CLAUDE.md' if ai_agent == 'claude' and agent_file_style == 'canonical' else 'AGENTS.md' }}) and fill in the BOOTSTRAP block.
+    3. Skim .ai/instructions/ and adapt to your project's conventions.
+    4. Set any MCP server env vars listed in .env.example.
+
+project_name:
+  type: str
+  help: "Project name (used in README, manifests, etc.)"
+  validator: "{% if not project_name %}Required.{% endif %}"
+
+project_description:
+  type: str
+  help: "One-line description of the project"
+  default: ""
+
+author_name:
+  type: str
+  help: "Author / maintainer name"
+  default: ""
+
+author_email:
+  type: str
+  help: "Author / maintainer email"
+  default: ""
+
+languages:
+  type: str
+  multiselect: true
+  help: "Which languages does this project use?"
+  choices:
+    Rust: rust
+    Python: python
+    "C/C++": cpp
+    TypeScript/Node: typescript
+  default:
+    - python
+
+domain:
+  type: str
+  help: "Primary deployment target / use-case"
+  choices:
+    Web service or app: web
+    CLI utility: cli
+    Embedded / hardware: embedded
+    Library / SDK: library
+  default: web
+
+ai_agent:
+  type: str
+  help: "Primary AI assistant for this project"
+  choices:
+    Claude Code: claude
+    Cursor: cursor
+    GitHub Copilot: copilot
+    Universal (any agent): universal
+  default: claude
+
+agent_file_style:
+  type: str
+  help: "How should agent instruction files be named?"
+  choices:
+    "Per-agent canonical (CLAUDE.md / .cursorrules / copilot-instructions.md)": canonical
+    "Generic AGENTS.md as source of truth, agent-specific files redirect to it": generic
+  default: canonical
+
+mcp_servers:
+  type: str
+  multiselect: true
+  help: "Which MCP servers should be preconfigured?"
+  choices:
+    "GitHub (issues, PRs, code search)": github
+    "Filesystem (scoped file access)": filesystem
+    "Fetch (HTTP fetch for docs/APIs)": fetch
+    "Playwright (browser automation)": playwright
+    "Postgres (read-only DB introspection)": postgres
+  default:
+    - github
+    - filesystem
+
+include_github_workflows:
+  type: bool
+  help: "Include a starter .github/workflows/ci.yml?"
+  default: true
+
+include_vscode:
+  type: bool
+  help: "Include shared .vscode/ editor settings?"
+  default: true

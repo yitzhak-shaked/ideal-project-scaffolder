@@ -1,0 +1,54 @@
+# Security
+
+Baseline security posture for this project. Update with project-specific
+threats as the system grows.
+
+## Secrets
+
+- **Never** commit secrets. `.env` is gitignored; `.env.example` lists the
+  shape of required variables with empty values.
+- All secrets come from environment variables at runtime. No hard-coded
+  credentials, even in tests — use dedicated test credentials in
+  `.env.test` (also gitignored) or generate ephemeral ones.
+- Log redaction: secrets and PII must not appear in logs. Add explicit
+  redaction at the logger configuration level, not at each call site.
+
+## Input handling
+
+- Validate at the boundary (`presentation/`). Once data crosses into
+  `application/` or `domain/`, it should already be typed and validated.
+- Use parameterized queries / prepared statements. No string-concatenated
+  SQL anywhere.
+- Escape on output, not on input. Store the canonical form; render-time
+  escaping is the contextually correct one.
+
+## Dependencies
+
+- Pin direct dependencies to specific versions. Let lockfiles handle
+  transitive pinning.
+{% if 'python' in languages %}- Python: `uv lock` produces `uv.lock`. Commit it.
+{% endif %}{% if 'rust' in languages %}- Rust: `Cargo.lock` is committed for binaries, omitted for libraries.
+{% endif %}{% if 'typescript' in languages %}- TypeScript: commit `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock` — exactly one.
+{% endif %}- Run `npm audit` / `cargo audit` / `pip-audit` regularly. Address high+
+  severity findings within a sprint.
+
+## AuthN / AuthZ
+
+- Authentication is centralized. Don't roll your own — use the framework's
+  built-in or a vetted library.
+- Authorization checks at the use-case boundary in `application/`. The
+  presentation layer extracts the principal; the use case decides what they
+  may do.
+
+## Cryptography
+
+- Never invent crypto. Use the language's standard library or a vetted
+  crate / package (`ring`, `cryptography`, `node:crypto`).
+- Use AEAD modes (AES-GCM, ChaCha20-Poly1305). Never raw ECB/CBC.
+- KDFs for passwords: Argon2id by default; scrypt or bcrypt acceptable
+  on legacy systems.
+
+## Reporting
+
+If a security issue is discovered, do not file a public issue. Contact
+the maintainer{% if author_email %} ({{ author_email }}){% endif %} directly.

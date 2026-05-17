@@ -1,0 +1,16 @@
+[package]
+name = "{{ project_name | replace('-', '_') | replace(' ', '_') | lower }}"
+version = "0.1.0"
+edition = "2021"
+{% if project_description %}description = "{{ project_description }}"
+{% endif %}{% if author_name %}authors = ["{{ author_name }}{% if author_email %} <{{ author_email }}>{% endif %}"]
+{% endif %}
+
+[dependencies]
+
+[dev-dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

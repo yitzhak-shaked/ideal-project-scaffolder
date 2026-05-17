@@ -1,0 +1,76 @@
+# {{ project_name }} — task runner
+# Run `just` to list available recipes.
+
+default:
+    @just --list
+
+{% if 'rust' in languages %}
+# --- Rust ---
+rust-build:
+    cargo build
+
+rust-test:
+    cargo test
+
+rust-fmt:
+    cargo fmt --all
+
+rust-lint:
+    cargo clippy --all-targets --all-features -- -D warnings
+{% endif %}
+{% if 'python' in languages %}
+# --- Python ---
+py-install:
+    uv sync
+
+py-test:
+    uv run pytest
+
+py-fmt:
+    uv run ruff format .
+
+py-lint:
+    uv run ruff check .
+
+py-typecheck:
+    uv run mypy src tests
+{% endif %}
+{% if 'cpp' in languages %}
+# --- C/C++ ---
+cpp-configure:
+    cmake -S . -B build
+
+cpp-build:
+    cmake --build build
+
+cpp-test:
+    ctest --test-dir build --output-on-failure
+{% endif %}
+{% if 'typescript' in languages %}
+# --- TypeScript / Node ---
+ts-install:
+    npm install
+
+ts-build:
+    npm run build
+
+ts-test:
+    npm test
+
+ts-lint:
+    npm run lint
+{% endif %}
+
+# Aggregate
+test:
+{% if 'rust' in languages %}    just rust-test
+{% endif %}{% if 'python' in languages %}    just py-test
+{% endif %}{% if 'cpp' in languages %}    just cpp-test
+{% endif %}{% if 'typescript' in languages %}    just ts-test
+{% endif %}
+
+lint:
+{% if 'rust' in languages %}    just rust-lint
+{% endif %}{% if 'python' in languages %}    just py-lint
+{% endif %}{% if 'typescript' in languages %}    just ts-lint
+{% endif %}

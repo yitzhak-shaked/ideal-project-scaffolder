@@ -1,0 +1,50 @@
+# {{ project_name }} — Cursor rules
+
+<!-- BOOTSTRAP:START -->
+<!-- Fill these in on first project use, then delete this comment block. -->
+Primary framework(s):  (e.g. Actix, FastAPI, Next.js, Embassy)
+Key external services: (databases, APIs, queues, hardware)
+Domain glossary:       (terms a new agent must know)
+<!-- BOOTSTRAP:END -->
+
+## Stack
+
+Languages: {{ languages | join(', ') }}
+Domain: {{ domain }}
+
+## Project conventions — read first
+
+Before answering or editing code, read these files in `.ai/instructions/`:
+
+- coding-conventions.md  — language style and idioms
+- architecture.md        — DDD layering rules
+- testing.md             — what / where / how to test
+- security.md            — security posture and constraints
+
+They are authoritative — if anything here conflicts with them, they win.
+
+## Source layout
+
+src/application/      Use cases, services, orchestration
+src/domain/           Pure business logic (entities, value objects, interfaces)
+src/infrastructure/   DB, network, drivers, external adapters
+src/presentation/     Entry points (HTTP routers, CLI, ISRs)
+tests/{unit,integration,e2e,performance}
+
+Empty directories are prefixed with `_` until they receive their first file.
+
+## MCP servers
+
+{% if mcp_servers %}
+Preconfigured in `.vscode/mcp.json`:
+{% for server in mcp_servers %}- {{ server }}
+{% endfor %}
+See `.env.example` for any required environment variables.
+{% else %}
+No MCP servers preconfigured.
+{% endif %}
+
+## Workflow
+
+Use the `Justfile` recipes (`just test`, `just lint`) rather than invoking
+language toolchains directly.
