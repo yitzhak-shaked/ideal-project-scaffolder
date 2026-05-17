@@ -1,24 +1,28 @@
 """
 Post-generation cleanup for the project scaffolder.
 
-Copier invokes this with cwd set to the rendered project root. The script:
-  1. Renames any empty directory (or one containing only `.gitkeep`)
-     to `_<name>/` so it is visibly inert until something is added.
-  2. Removes the `.gitkeep` sentinels it relied on for that detection.
+Copier renders everything into <dst>/<project_slug>/ (so the user's chosen
+project name becomes the new folder, regardless of what destination they
+passed on the CLI). Copier sets the task's cwd to <dst>, so the hook
+takes <project_slug> as its single argument and treats <cwd>/<slug>/ as
+the project root.
+
+The script:
+  1. Renames empty directories (or those holding only `.gitkeep`) to
+     `_<name>/` so they're visibly inert until something is added.
+  2. Removes `.gitkeep` sentinels from any directory that now has real
+     content.
   3. Prunes top-level hidden dirs (.claude/, .github/, …) that ended up
-     with no real content (every conditional skipped).
+     with no real content because every conditional inside them skipped.
 
 Invoked as:
-    python post_generation.py <ai_agent> <agent_file_style>
-
-The ai_agent / agent_file_style args are accepted for future use and
-currently unused — the agent workspace folder is already correctly named
-by Copier via the `{{ ai_folder }}` path templating.
+    python post_generation.py <project_slug>
 """
 from __future__ import annotations
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 
@@ -88,10 +92,16 @@ def prune_empty_hidden_top_level_dirs(root: Path) -> None:
 
 
 def main() -> int:
-    dst = Path.cwd()
-    underscore_empty_dirs(dst)
-    strip_gitkeeps_from_populated_dirs(dst)
-    prune_empty_hidden_top_level_dirs(dst)
+    if len(sys.argv) < 2 or not sys.argv[1]:
+        print("usage: post_generation.py <project_slug>", file=sys.stderr)
+        return 2
+    root = Path.cwd() / sys.argv[1]
+    if not root.is_dir():
+        print(f"project root not found: {root}", file=sys.stderr)
+        return 2
+    underscore_empty_dirs(root)
+    strip_gitkeeps_from_populated_dirs(root)
+    prune_empty_hidden_top_level_dirs(root)
     return 0
 
 

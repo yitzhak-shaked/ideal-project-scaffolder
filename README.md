@@ -13,30 +13,28 @@ layout.
 - macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-**2. Generate a project.** The last argument is the destination directory —
-**use the name you want your project to have**, the scaffolder will pre-fill
-`project_name` from it:
+**2. Generate a project** — `.` as the destination is the recommended
+usage. The scaffolder asks for the project name as the first question
+and creates a folder of that name inside your current directory:
 
 ```sh
-uvx copier copy --trust gh:yitzhak-shaked/ideal-project-scaffolder <your-project-name>
-```
-
-Examples:
-
-```sh
-uvx copier copy --trust gh:yitzhak-shaked/ideal-project-scaffolder hello-rust
-# creates ./hello-rust/ and defaults project_name to "hello-rust"
+uvx copier copy --trust gh:yitzhak-shaked/ideal-project-scaffolder .
 ```
 
 Or from a local clone:
 
 ```sh
-uvx copier copy --trust /path/to/ideal-project-scaffolder my-cool-app
+uvx copier copy --trust /path/to/ideal-project-scaffolder .
 ```
 
-You'll be asked a short series of questions (languages, domain, AI agent,
-MCP servers, …). When it finishes, the new project is ready to open in your
-editor.
+You'll be asked a short series of questions (project name, languages,
+domain, AI agent, MCP servers, …). When it finishes, a new folder named
+after your project (slugified — `"My Cool App"` → `my-cool-app/`)
+appears in the current directory, ready to open.
+
+> You can also pass any other directory as the destination
+> (`uvx copier copy --trust gh:... ~/projects`) and the new project
+> folder will be created inside it.
 
 **3. (If you picked MCP servers)** Inside the new project, set up env vars
 and verify in one command:

@@ -1,14 +1,14 @@
 _subdirectory: template
 _templates_suffix: .jinja
-_answers_file: .copier-answers.yml
+# Answers file lives inside the rendered project, not in the parent destination.
+_answers_file: "{{ project_slug }}/.copier-answers.yml"
 
 _min_copier_version: "9.0.0"
 
-# Tasks run with cwd = destination, so the hook reads cwd directly — no need
-# to pass dst_path (which is rendered as the user's relative CLI arg and
-# would be wrong from inside the destination).
+# Tasks run with cwd = destination (the parent of the project folder). The
+# hook is told the slug so it can scope its work to <cwd>/<slug>/.
 _tasks:
-  - ["python", "{{ _copier_conf.src_path }}/_hooks/post_generation.py", "{{ ai_agent }}", "{{ agent_file_style }}"]
+  - ["python", "{{ _copier_conf.src_path }}/_hooks/post_generation.py", "{{ project_slug }}"]
 
 # Printed to the terminal before the first prompt. ANSI escape codes are
 # embedded directly (Copier prints messages as plain text without Rich
@@ -16,14 +16,11 @@ _tasks:
 # magenta, 93=gold, 90=gray, 32=green, 36=cyan, 1=bold, 0=reset.
 _message_before_copy: "\x1b[34m╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮\x1b[0m\n\x1b[34m┃\x1b[0m  \x1b[96m█▀▀ █▄█\x1b[0m   \x1b[97mM Y  I D E A L  P R O J E C T  T E M P L A T E\x1b[0m  \x1b[34m┃\x1b[0m\n\x1b[34m┃\x1b[0m  \x1b[96m▄██ ░█░\x1b[0m   \x1b[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m  \x1b[34m┃\x1b[0m\n\x1b[34m┃\x1b[0m            \x1b[93m◇\x1b[0m \x1b[90mINITIALIZING BUILD SEQUENCE\x1b[0m                   \x1b[34m┃\x1b[0m\n\x1b[34m╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯\x1b[0m\n \x1b[96m>\x1b[0m \x1b[97mAwaiting configuration...\x1b[0m\n"
 
-_message_after_copy: "\x1b[32m✓ {{ project_name }}\x1b[0m generated in \x1b[36m{{ _copier_conf.dst_path }}\x1b[0m\n\nNext steps:\n  1. \x1b[97mcd {{ _copier_conf.dst_path }}\x1b[0m\n  2. Review \x1b[36m{{ 'CLAUDE.md' if ai_agent == 'claude' and agent_file_style == 'canonical' else 'AGENTS.md' }}\x1b[0m and fill in the BOOTSTRAP block.\n  3. Skim \x1b[36m{{ ai_folder }}/instructions/\x1b[0m and adapt to your conventions.\n{%- if mcp_servers %}\n  4. \x1b[1mSet up MCP servers\x1b[0m:\n      - copy \x1b[36m.env.example\x1b[0m to \x1b[36m.env\x1b[0m and fill in the required tokens\n      - run \x1b[97mjust mcp\x1b[0m to verify everything is wired up\n\nSelected MCP servers: \x1b[93m{{ mcp_servers | join(', ') }}\x1b[0m\n{%- endif %}\n"
+_message_after_copy: "\x1b[32m✓ {{ project_name }}\x1b[0m generated in \x1b[36m./{{ project_slug }}/\x1b[0m\n\nNext steps:\n  1. \x1b[97mcd {{ project_slug }}\x1b[0m\n  2. Review \x1b[36m{{ 'CLAUDE.md' if ai_agent == 'claude' and agent_file_style == 'canonical' else 'AGENTS.md' }}\x1b[0m and fill in the BOOTSTRAP block.\n  3. Skim \x1b[36m{{ ai_folder }}/instructions/\x1b[0m and adapt to your conventions.\n{%- if mcp_servers %}\n  4. \x1b[1mSet up MCP servers\x1b[0m:\n      - copy \x1b[36m.env.example\x1b[0m to \x1b[36m.env\x1b[0m and fill in the required tokens\n      - run \x1b[97mjust mcp\x1b[0m to verify everything is wired up\n\nSelected MCP servers: \x1b[93m{{ mcp_servers | join(', ') }}\x1b[0m\n{%- endif %}\n"
 
 project_name:
   type: str
-  help: "Project name (used in README, manifests, etc.)"
-  # Defaults to the destination directory's name so the answer matches the
-  # folder you generated into. Override at the prompt if you want different.
-  default: "{{ _copier_conf.dst_path.name }}"
+  help: "Project name (used in README, manifests, and to name the new folder)"
   validator: "{% if not project_name %}Required.{% endif %}"
 
 project_description:
@@ -107,6 +104,14 @@ include_vscode:
   type: bool
   help: "Include shared .vscode/ editor settings + extension recommendations?"
   default: true
+
+# Computed — not asked. Filesystem-safe slug derived from project_name.
+# This becomes the rendered project's top-level folder name.
+# (No regex_replace because Jinja's stock filter set doesn't include it.)
+project_slug:
+  type: str
+  when: false
+  default: "{{ project_name | lower | trim | replace(' ', '-') | replace('_', '-') | replace('/', '-') }}"
 
 # Computed — not asked. The agent workspace folder name.
 # - Claude canonical -> .claude/ (matches Claude Code's native folder)
