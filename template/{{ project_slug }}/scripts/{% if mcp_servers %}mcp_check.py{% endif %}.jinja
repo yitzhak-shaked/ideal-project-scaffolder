@@ -112,7 +112,7 @@ def main() -> int:
         if shutil.which(runtime):
             print(f"  [{OK}]      {runtime} on PATH")
         else:
-            print(f"  [{MISSING}] {runtime} not on PATH — install Node/npm or uv")
+            print(f"  [{MISSING}] {runtime} not on PATH - install Node/npm or uv")
             problems += 1
     print()
 
@@ -121,7 +121,7 @@ def main() -> int:
     for name in servers:
         req = SERVER_REQUIREMENTS.get(name)
         if not req:
-            print(f"  [{yellow('UNKNOWN')}] {name} — no known requirements")
+            print(f"  [{yellow('UNKNOWN')}] {name} - no known requirements")
             continue
         missing_env = [v for v in req["env"] if not env.get(v)]
         if missing_env:
@@ -140,7 +140,25 @@ def main() -> int:
 
     if problems == 0:
         print(green(f"All {len(servers)} server(s) ready."))
-        print(f"  Restart your agent (or run {cyan('claude mcp list')}) to verify.")
+        print()
+        is_claude_config = config_path.name == ".mcp.json"
+        if is_claude_config:
+            prompt_text = cyan("Allow .mcp.json MCP servers?")
+            print(bold("Activating in Claude Code"))
+            print(f"  Project-scoped MCP servers require {bold('one-time approval')} before")
+            print(f"  Claude will load them. {yellow('They will not appear in `claude mcp list`')}")
+            print(f"  {yellow('until you approve.')}")
+            print()
+            print(f"  1. From this directory, start a session: {cyan('claude')}")
+            print(f"  2. Claude prompts: {prompt_text}  Answer {green('yes')}.")
+            print(f"     The approval is stored in {cyan('.claude/settings.local.json')} and persists.")
+            print(f"  3. Verify with {cyan('claude mcp list')} - your servers should now appear")
+            print(f"     alongside any account-level (claude.ai) servers.")
+            print()
+            print(f"  Tip: if {cyan('claude mcp list')} only shows {cyan('claude.ai *')} entries,")
+            print(f"  you have not approved yet - repeat step 1.")
+        else:
+            print("  Reload your editor window so the MCP config is re-read.")
         return 0
 
     print(red(f"{problems} issue(s) to resolve."))

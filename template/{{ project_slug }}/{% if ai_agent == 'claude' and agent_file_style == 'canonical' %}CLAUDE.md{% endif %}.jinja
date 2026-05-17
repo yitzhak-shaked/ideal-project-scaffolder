@@ -46,9 +46,19 @@ The following MCP servers are preconfigured in `.mcp.json`:
 {% for server in mcp_servers %}- **{{ server }}**
 {% endfor %}
 
-To verify setup, run `just mcp` from the project root — it reports which
-env vars / runtimes are missing and the exact follow-up steps. Then run
-`claude mcp list` inside the project to confirm Claude has registered them.
+**Setup workflow** (one time per project):
+
+1. `cp .env.example .env` and fill in required tokens.
+2. `just mcp` — diagnostic that confirms env vars + runtimes are in place.
+3. From this directory run `claude` to start a session. Claude will
+   prompt to **approve** the `.mcp.json` servers — answer yes. Approval
+   is stored in `.claude/settings.local.json` and persists.
+4. `claude mcp list` should now show these servers alongside any
+   account-level (`claude.ai *`) servers.
+
+> If `claude mcp list` only shows `claude.ai *` entries, the approval
+> step (3) has not been done yet. Until then, the local MCP servers
+> are dormant even though the config and env vars are correct.
 {% else %}
 No MCP servers preconfigured. Add some to `.mcp.json` if needed.
 {% endif %}

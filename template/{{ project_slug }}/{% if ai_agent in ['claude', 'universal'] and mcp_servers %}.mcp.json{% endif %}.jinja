@@ -13,7 +13,7 @@
 {%- if 'filesystem' in mcp_servers -%}
 {%- set _ = entries.append('    "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${PWD}"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     }') -%}
 {%- endif -%}
 {%- if 'fetch' in mcp_servers -%}

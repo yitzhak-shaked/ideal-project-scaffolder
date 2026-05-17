@@ -36,17 +36,28 @@ appears in the current directory, ready to open.
 > (`uvx copier copy --trust gh:... ~/projects`) and the new project
 > folder will be created inside it.
 
-**3. (If you picked MCP servers)** Inside the new project, set up env vars
-and verify in one command:
+**3. (If you picked MCP servers)** Inside the new project:
 
 ```sh
 cp .env.example .env     # then fill in any required tokens
 just mcp                 # diagnostic: tells you what's missing and how to fix it
 ```
 
-`just mcp` is the single-command MCP-setup workflow. It checks the required
-runtimes (npx, uvx), reports missing env vars, and lists any one-time
-setup commands (e.g. `npx playwright install` for the Playwright server).
+`just mcp` checks runtimes (npx, uvx), reports missing env vars, and lists
+one-time setup commands (e.g. `npx playwright install`).
+
+**For Claude Code users:** project-scoped MCP servers in `.mcp.json` require
+a one-time **approval** before Claude will load them. Start a session in
+the project directory:
+
+```sh
+claude
+```
+
+Claude prompts: *"`.mcp.json` contains N MCP servers. Allow?"* — answer yes.
+The approval is saved to `.claude/settings.local.json` and persists. Until
+you do this, `claude mcp list` will only show your account-level
+(`claude.ai *`) servers, not the project ones.
 
 ## What you get
 
