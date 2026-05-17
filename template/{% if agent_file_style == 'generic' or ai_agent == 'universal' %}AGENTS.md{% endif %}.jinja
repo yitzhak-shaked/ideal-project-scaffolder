@@ -43,7 +43,9 @@ Preconfigured in {% if ai_agent in ['claude', 'universal'] %}`.mcp.json`{% else 
 {% for server in mcp_servers %}- {{ server }}
 {% endfor %}
 
-See `.env.example` for any required environment variables.
+To verify setup, run `just mcp` from the project root — it checks runtimes
+(npx, uvx), reports any missing env vars, and lists the follow-up steps.
+Required environment variables are documented in `.env.example`.
 {% else %}
 No MCP servers preconfigured.
 {% endif %}

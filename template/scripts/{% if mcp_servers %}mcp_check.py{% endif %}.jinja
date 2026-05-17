@@ -1,0 +1,154 @@
+"""
+MCP setup check for {{ project_name }}.
+
+Run via `just mcp`. Reads the project's MCP config (.mcp.json for Claude/
+Universal, .vscode/mcp.json for Cursor/Copilot), inspects each server's
+runtime + env-var requirements, and tells you what's missing.
+
+This is a diagnostic, not an installer. The intent is to surface
+actionable next steps so the agent's MCP servers come up first try.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+
+# ANSI shortcuts — colors when stdout is a TTY, plain text otherwise.
+_TTY = sys.stdout.isatty()
+def _c(code: str, s: str) -> str: return f"\033[{code}m{s}\033[0m" if _TTY else s
+def green(s: str) -> str: return _c("32", s)
+def red(s: str) -> str: return _c("31", s)
+def yellow(s: str) -> str: return _c("33", s)
+def cyan(s: str) -> str: return _c("36", s)
+def bold(s: str) -> str: return _c("1", s)
+
+OK = green("OK")
+MISSING = red("MISSING")
+INFO = cyan("INFO")
+
+
+# Per-server requirements. Update when adding a new MCP server stanza.
+SERVER_REQUIREMENTS: dict[str, dict] = {
+    "github": {
+        "runtime": "npx",
+        "env": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+        "post_setup": [],
+    },
+    "filesystem": {
+        "runtime": "npx",
+        "env": [],
+        "post_setup": [],
+    },
+    "fetch": {
+        "runtime": "uvx",
+        "env": [],
+        "post_setup": [],
+    },
+    "playwright": {
+        "runtime": "npx",
+        "env": [],
+        "post_setup": ["npx playwright install"],
+    },
+    "postgres": {
+        "runtime": "npx",
+        "env": ["POSTGRES_CONNECTION_STRING"],
+        "post_setup": [],
+    },
+    "context7": {
+        "runtime": "npx",
+        "env": [],
+        "post_setup": [],
+    },
+}
+
+
+def load_dotenv(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    out: dict[str, str] = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        out[key.strip()] = val.strip().strip('"').strip("'")
+    return out
+
+
+def find_mcp_config(root: Path) -> tuple[Path, list[str]] | None:
+    for candidate, key in [(root / ".mcp.json", "mcpServers"),
+                           (root / ".vscode" / "mcp.json", "servers")]:
+        if candidate.exists():
+            data = json.loads(candidate.read_text())
+            return candidate, list((data.get(key) or {}).keys())
+    return None
+
+
+def main() -> int:
+    root = Path.cwd()
+    print(bold("MCP setup check"))
+    print()
+
+    found = find_mcp_config(root)
+    if not found:
+        print(f"  [{MISSING}] no .mcp.json or .vscode/mcp.json found in {root}")
+        print(f"           run the scaffolder with at least one MCP server selected.")
+        return 1
+
+    config_path, servers = found
+    print(f"  Config:  {cyan(str(config_path.relative_to(root)))}")
+    print(f"  Servers: {', '.join(servers) or '(none)'}")
+    print()
+
+    env = {**os.environ, **load_dotenv(root / ".env")}
+    runtimes_needed = {SERVER_REQUIREMENTS[s]["runtime"] for s in servers if s in SERVER_REQUIREMENTS}
+    problems = 0
+
+    print(bold("Runtimes"))
+    for runtime in sorted(runtimes_needed):
+        if shutil.which(runtime):
+            print(f"  [{OK}]      {runtime} on PATH")
+        else:
+            print(f"  [{MISSING}] {runtime} not on PATH — install Node/npm or uv")
+            problems += 1
+    print()
+
+    print(bold("Per-server status"))
+    post_setup: list[str] = []
+    for name in servers:
+        req = SERVER_REQUIREMENTS.get(name)
+        if not req:
+            print(f"  [{yellow('UNKNOWN')}] {name} — no known requirements")
+            continue
+        missing_env = [v for v in req["env"] if not env.get(v)]
+        if missing_env:
+            print(f"  [{MISSING}] {name}: set {', '.join(missing_env)} in .env")
+            problems += 1
+        else:
+            print(f"  [{OK}]      {name}")
+        post_setup.extend(req["post_setup"])
+    print()
+
+    if post_setup:
+        print(bold("Optional one-time setup"))
+        for cmd in sorted(set(post_setup)):
+            print(f"  {INFO} run: {cyan(cmd)}")
+        print()
+
+    if problems == 0:
+        print(green(f"All {len(servers)} server(s) ready."))
+        print(f"  Restart your agent (or run {cyan('claude mcp list')}) to verify.")
+        return 0
+
+    print(red(f"{problems} issue(s) to resolve."))
+    print(f"  1. Copy .env.example to .env if you haven't.")
+    print(f"  2. Fill in the variables above.")
+    print(f"  3. Re-run {cyan('just mcp')}.")
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

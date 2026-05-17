@@ -33,6 +33,12 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-postgres", "${env:POSTGRES_CONNECTION_STRING}"]
     }') -%}
+{%- endif -%}
+{%- if 'context7' in mcp_servers -%}
+{%- set _ = entries.append('    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    }') -%}
 {%- endif %}
 {{ entries | join(',\n') }}
   }

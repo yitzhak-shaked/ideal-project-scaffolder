@@ -74,3 +74,9 @@ lint:
 {% endif %}{% if 'python' in languages %}    just py-lint
 {% endif %}{% if 'typescript' in languages %}    just ts-lint
 {% endif %}
+{% if mcp_servers %}
+# Diagnose MCP server setup: runtimes, env vars, and follow-up actions.
+# Single command that tells you everything needed to get MCP working.
+mcp:
+    python scripts/mcp_check.py
+{% endif %}

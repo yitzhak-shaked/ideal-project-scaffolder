@@ -13,21 +13,42 @@ layout.
 - macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-**2. Generate a project** into an empty directory:
+**2. Generate a project.** The last argument is the destination directory —
+**use the name you want your project to have**, the scaffolder will pre-fill
+`project_name` from it:
 
 ```sh
-uvx copier copy gh:yitzhak-shaked/ideal-project-scaffolder ./my-new-project
+uvx copier copy --trust gh:yitzhak-shaked/ideal-project-scaffolder <your-project-name>
+```
+
+Examples:
+
+```sh
+uvx copier copy --trust gh:yitzhak-shaked/ideal-project-scaffolder hello-rust
+# creates ./hello-rust/ and defaults project_name to "hello-rust"
 ```
 
 Or from a local clone:
 
 ```sh
-uvx copier copy /path/to/ideal-project-scaffolder ./my-new-project
+uvx copier copy --trust /path/to/ideal-project-scaffolder my-cool-app
 ```
 
-You will be asked a short series of questions (languages, domain, AI agent,
+You'll be asked a short series of questions (languages, domain, AI agent,
 MCP servers, …). When it finishes, the new project is ready to open in your
 editor.
+
+**3. (If you picked MCP servers)** Inside the new project, set up env vars
+and verify in one command:
+
+```sh
+cp .env.example .env     # then fill in any required tokens
+just mcp                 # diagnostic: tells you what's missing and how to fix it
+```
+
+`just mcp` is the single-command MCP-setup workflow. It checks the required
+runtimes (npx, uvx), reports missing env vars, and lists any one-time
+setup commands (e.g. `npx playwright install` for the Playwright server).
 
 ## What you get
 

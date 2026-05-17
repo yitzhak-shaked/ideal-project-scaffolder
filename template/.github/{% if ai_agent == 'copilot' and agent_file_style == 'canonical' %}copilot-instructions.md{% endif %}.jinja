@@ -41,7 +41,8 @@ Empty directories are prefixed with `_` until they receive their first file.
 Preconfigured in `.vscode/mcp.json`:
 {% for server in mcp_servers %}- {{ server }}
 {% endfor %}
-See `.env.example` for any required environment variables.
+Run `just mcp` to verify setup (runtimes + required env vars).
+See `.env.example` for the env vars themselves.
 {% else %}
 No MCP servers preconfigured.
 {% endif %}
