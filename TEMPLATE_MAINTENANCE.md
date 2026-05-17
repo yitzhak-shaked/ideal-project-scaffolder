@@ -38,7 +38,7 @@ conditional file emission works.
 3. Add a per-language section to `template/.gitignore.jinja` and
    `template/Justfile.jinja` inside `{% if 'golang' in languages %} … {% endif %}`.
 4. Add a coding conventions section to
-   `template/.ai/instructions/coding-conventions.md.jinja`.
+   `template/{{ ai_folder }}/instructions/coding-conventions.md.jinja`.
 5. If relevant, add a CI step to `template/.github/workflows/ci.yml.jinja`.
 
 ## Adding a new MCP server
@@ -52,10 +52,21 @@ conditional file emission works.
 
 ## Adding a new instruction file
 
-1. Create `template/.ai/instructions/your-topic.md.jinja`.
+1. Create `template/{{ ai_folder }}/instructions/your-topic.md.jinja`.
 2. Add a link to it inside the agent file templates
    (`template/{% if … %}CLAUDE.md{% endif %}.jinja`, etc.) so the agent
    knows to read it.
+
+## The `{{ ai_folder }}` directory
+
+`ai_folder` is computed in `copier.yml` from `ai_agent` + `agent_file_style`:
+- Claude canonical → `.claude/`
+- Cursor canonical → `.cursor/`
+- Anything else → `.ai/`
+
+Everything under `template/{{ ai_folder }}/` is rendered into that
+agent-appropriate location. References inside agent files use
+`{{ '{{ ai_folder }}' }}/instructions/...` so links survive the rename.
 
 ## Adding a new agent
 

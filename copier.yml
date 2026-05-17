@@ -4,8 +4,11 @@ _answers_file: .copier-answers.yml
 
 _min_copier_version: "9.0.0"
 
+# Tasks run with cwd = destination, so the hook reads cwd directly — no need
+# to pass dst_path (which is rendered as the user's relative CLI arg and
+# would be wrong from inside the destination).
 _tasks:
-  - ["python", "{{ _copier_conf.src_path }}/_hooks/post_generation.py", "{{ _copier_conf.dst_path }}", "{{ ai_agent }}", "{{ agent_file_style }}"]
+  - ["python", "{{ _copier_conf.src_path }}/_hooks/post_generation.py", "{{ ai_agent }}", "{{ agent_file_style }}"]
 
 _message_after_copy: |
   Project generated.
@@ -13,7 +16,7 @@ _message_after_copy: |
   Next steps:
     1. cd into the new directory.
     2. Review the agent instruction file ({{ 'CLAUDE.md' if ai_agent == 'claude' and agent_file_style == 'canonical' else 'AGENTS.md' }}) and fill in the BOOTSTRAP block.
-    3. Skim .ai/instructions/ and adapt to your project's conventions.
+    3. Skim {{ '.claude' if ai_agent == 'claude' and agent_file_style == 'canonical' else '.cursor' if ai_agent == 'cursor' and agent_file_style == 'canonical' else '.ai' }}/instructions/ and adapt to your project's conventions.
     4. Set any MCP server env vars listed in .env.example.
 
 project_name:
@@ -39,7 +42,7 @@ author_email:
 languages:
   type: str
   multiselect: true
-  help: "Which languages does this project use?"
+  help: "Which languages? (SPACE to toggle each, ENTER to confirm)"
   choices:
     Rust: rust
     Python: python
@@ -79,7 +82,7 @@ agent_file_style:
 mcp_servers:
   type: str
   multiselect: true
-  help: "Which MCP servers should be preconfigured?"
+  help: "Which MCP servers? (SPACE to toggle each, ENTER to confirm)"
   choices:
     "GitHub (issues, PRs, code search)": github
     "Filesystem (scoped file access)": filesystem
@@ -99,3 +102,12 @@ include_vscode:
   type: bool
   help: "Include shared .vscode/ editor settings?"
   default: true
+
+# Computed — not asked. The agent workspace folder name.
+# - Claude canonical -> .claude/ (matches Claude Code's native folder)
+# - Cursor canonical -> .cursor/ (matches Cursor's native folder)
+# - Everything else  -> .ai/    (generic, agent-agnostic)
+ai_folder:
+  type: str
+  when: false
+  default: "{% if ai_agent == 'claude' and agent_file_style == 'canonical' %}.claude{% elif ai_agent == 'cursor' and agent_file_style == 'canonical' %}.cursor{% else %}.ai{% endif %}"

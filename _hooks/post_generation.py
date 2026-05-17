@@ -1,22 +1,24 @@
 """
 Post-generation cleanup for the project scaffolder.
 
-Walks the rendered project tree and:
+Copier invokes this with cwd set to the rendered project root. The script:
   1. Renames any empty directory (or one containing only `.gitkeep`)
      to `_<name>/` so it is visibly inert until something is added.
   2. Removes the `.gitkeep` sentinels it relied on for that detection.
+  3. Prunes top-level hidden dirs (.claude/, .github/, …) that ended up
+     with no real content (every conditional skipped).
 
-Invoked by Copier's `_tasks:` hook with:
-    python post_generation.py <dst_path> <ai_agent> <agent_file_style>
+Invoked as:
+    python post_generation.py <ai_agent> <agent_file_style>
 
-ai_agent / agent_file_style are reserved for future use (e.g. moving
-.ai/skills/ into .claude/skills/ for canonical Claude projects). They
-are currently consumed but unused.
+The ai_agent / agent_file_style args are accepted for future use and
+currently unused — the agent workspace folder is already correctly named
+by Copier via the `{{ ai_folder }}` path templating.
 """
 from __future__ import annotations
 
 import os
-import sys
+import shutil
 from pathlib import Path
 
 
@@ -74,8 +76,6 @@ def prune_empty_hidden_top_level_dirs(root: Path) -> None:
     # Top-level dotted dirs (.claude, .github, .vscode, .ai...) exist because
     # a path under them was templated. If the conditional skipped every leaf,
     # the dir is left as a hollow shell — delete it rather than show garbage.
-    import shutil
-
     for entry in root.iterdir():
         if not entry.is_dir():
             continue
@@ -88,14 +88,7 @@ def prune_empty_hidden_top_level_dirs(root: Path) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print("usage: post_generation.py <dst_path> [ai_agent] [agent_file_style]", file=sys.stderr)
-        return 2
-    dst = Path(sys.argv[1]).resolve()
-    if not dst.is_dir():
-        print(f"destination not found: {dst}", file=sys.stderr)
-        return 2
-
+    dst = Path.cwd()
     underscore_empty_dirs(dst)
     strip_gitkeeps_from_populated_dirs(dst)
     prune_empty_hidden_top_level_dirs(dst)

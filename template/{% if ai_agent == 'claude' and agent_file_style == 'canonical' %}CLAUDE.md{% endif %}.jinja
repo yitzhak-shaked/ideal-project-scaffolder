@@ -16,10 +16,10 @@
 
 Before answering or editing code, load the relevant convention files:
 
-- @.ai/instructions/coding-conventions.md
-- @.ai/instructions/architecture.md
-- @.ai/instructions/testing.md
-- @.ai/instructions/security.md
+- @{{ ai_folder }}/instructions/coding-conventions.md
+- @{{ ai_folder }}/instructions/architecture.md
+- @{{ ai_folder }}/instructions/testing.md
+- @{{ ai_folder }}/instructions/security.md
 
 These contain the project's coding style, layering rules, test expectations,
 and security posture. Treat them as authoritative — if something here conflicts
@@ -55,4 +55,5 @@ No MCP servers preconfigured. Add some to `.mcp.json` if needed.
 
 - Use the `Justfile` recipes (`just test`, `just lint`) rather than invoking
   language toolchains directly.
-- See `.claude/skills/` for project-specific Claude Code skills you can invoke.
+- See `{{ ai_folder }}/skills/` for project-specific skills you can invoke.
+- See `{{ ai_folder }}/agents/` for project-specific subagent definitions.

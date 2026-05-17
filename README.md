@@ -16,7 +16,7 @@ layout.
 **2. Generate a project** into an empty directory:
 
 ```sh
-uvx copier copy gh:<your-user>/ideal-project-scaffolder ./my-new-project
+uvx copier copy gh:yitzhak-shaked/ideal-project-scaffolder ./my-new-project
 ```
 
 Or from a local clone:
@@ -33,9 +33,12 @@ editor.
 
 - An agent file (`CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`,
   or `AGENTS.md`) configured for your agent of choice. It links to the
-  per-domain instruction set under `.ai/instructions/`.
-- `.ai/instructions/` containing `coding-conventions.md` (per chosen language),
-  `architecture.md`, `testing.md`, `security.md`.
+  per-domain instruction set under the agent workspace folder.
+- An agent workspace folder — named `.claude/` for Claude canonical, `.cursor/`
+  for Cursor canonical, `.ai/` otherwise — containing `instructions/`
+  (`coding-conventions.md` per chosen language, `architecture.md`,
+  `testing.md`, `security.md`), `skills/` (starter project skills), and
+  `agents/` (subagent definitions).
 - A preconfigured `.mcp.json` (or `.vscode/mcp.json`) with the MCP servers you
   selected.
 - Language manifests for every language you ticked (`Cargo.toml`,
