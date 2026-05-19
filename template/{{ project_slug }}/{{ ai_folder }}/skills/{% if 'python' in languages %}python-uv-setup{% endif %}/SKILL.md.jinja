@@ -1,0 +1,72 @@
+---
+name: python-uv-setup
+description: Set up or maintain the Python environment using uv. ALWAYS use this skill whenever a Python dependency needs to be added or removed, a Python command needs to be run, the user mentions pip/virtualenv/poetry/conda/pyenv (redirect them to uv), the project is freshly cloned and needs its env created, or anything in pyproject.toml or uv.lock needs to change. This project does not use pip directly — everything goes through uv.
+---
+
+# Python environment with uv
+
+This project uses [`uv`](https://docs.astral.sh/uv/) for Python
+environment, dependency, and interpreter management. **Never invoke
+`python`, `pip`, `virtualenv`, `pyenv`, `poetry`, or `pipx` directly.**
+
+For the full rules, load `@{{ ai_folder }}/instructions/python/tooling.md`.
+
+## Common operations
+
+| You want to | Run this |
+| --- | --- |
+| Create the env after a fresh clone | `uv sync` |
+| Add a runtime dep | `uv add <pkg>` |
+| Add a dev dep | `uv add --dev <pkg>` |
+| Remove a dep | `uv remove <pkg>` |
+| Run any Python command | `uv run <cmd>` (e.g. `uv run pytest`) |
+| Upgrade one package | `uv lock --upgrade-package <pkg>` |
+| Upgrade everything (within constraints) | `uv lock --upgrade` |
+| Pin a different interpreter | edit `.python-version`, then `uv sync` |
+
+## If a Python command needs to run
+
+Always prefix with `uv run`:
+
+```sh
+uv run pytest
+uv run ruff format .
+uv run ruff check . --fix
+uv run mypy src/
+uv run python -m my_module
+```
+
+`uv run` verifies the lockfile and environment before invoking the
+command, so you'll never hit "wrong version installed" mysteries.
+
+## If the user asks something pip-flavoured
+
+| User says | You do |
+| --- | --- |
+| "install requests" | `uv add requests` |
+| "pip install -r requirements.txt" | Look for `pyproject.toml`. If found, `uv sync`. If only `requirements.txt`, migrate it: `uv add $(cat requirements.txt)`. |
+| "activate the venv" | Don't. `uv run` makes activation unnecessary. |
+| "create a virtualenv" | `uv sync` (it creates `.venv/` automatically). |
+| "freeze the requirements" | `uv lock`. The lockfile is `uv.lock`. |
+
+## What gets committed
+
+- `pyproject.toml` — yes.
+- `uv.lock` — **yes**. Always.
+- `.python-version` — yes.
+- `.venv/` — never.
+
+## After making any dependency change
+
+1. Run `uv sync` to make sure the environment matches the new lockfile.
+2. Run `uv run pytest` to make sure nothing broke.
+3. Commit `pyproject.toml` and `uv.lock` together. Never one without the
+   other.
+
+## Reporting back
+
+After running uv operations, summarise:
+- What you added/removed.
+- Whether `uv.lock` changed.
+- Whether the test suite still passes.
+- Any deprecation warnings or resolver conflicts uv printed.

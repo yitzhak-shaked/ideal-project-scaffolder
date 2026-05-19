@@ -52,10 +52,42 @@ conditional file emission works.
 
 ## Adding a new instruction file
 
-1. Create `template/{{ ai_folder }}/instructions/your-topic.md.jinja`.
-2. Add a link to it inside the agent file templates
-   (`template/{% if … %}CLAUDE.md{% endif %}.jinja`, etc.) so the agent
-   knows to read it.
+Instructions are split by audience:
+
+- `template/{{ ai_folder }}/instructions/general/` — language-agnostic
+  rules (always loaded).
+- `template/{{ ai_folder }}/instructions/{% if 'python' in languages %}python{% endif %}/`
+  — Python-specific. The folder name is itself a Jinja gate; the whole
+  subtree is skipped if Python isn't selected.
+- New languages should mirror the Python pattern: create a sibling
+  folder gated by `'<lang>' in languages` and populate it with the
+  same shape (`zen.md`/style/tooling/design/patterns/code-smells/testing).
+
+To add a file:
+
+1. Create `template/{{ ai_folder }}/instructions/<bucket>/your-topic.md.jinja`.
+2. Add a link to it in:
+   - the relevant `README.md.jinja` inside that bucket (the human-facing index), and
+   - the agent file templates (`CLAUDE.md.jinja` uses `@`-mentions;
+     `AGENTS.md.jinja`, `.cursorrules.jinja`, and
+     `.github/copilot-instructions.md.jinja` use plain markdown links).
+3. If the file should only render when a particular question was
+   answered a particular way, gate its filename (not its content):
+   `template/.../{% if condition %}your-topic.md{% endif %}.jinja`.
+
+## Adding a new skill or subagent
+
+- **Skill:** `template/{{ ai_folder }}/skills/<skill-name>/SKILL.md.jinja`.
+  Must have YAML frontmatter with `name` and `description`. The
+  description is the primary trigger — make it specific and "pushy"
+  about when to invoke. Optional `scripts/`, `references/`, `assets/`
+  subdirectories per the Anthropic skill format.
+- **Subagent:** `template/{{ ai_folder }}/agents/<agent-name>.md.jinja`.
+  Must have YAML frontmatter with `name` and `description`. The body
+  is the role prompt.
+- Language- or domain-specific skills/agents: gate the *folder or
+  filename* with Jinja (e.g.
+  `template/.../skills/{% if 'python' in languages %}python-uv-setup{% endif %}/SKILL.md.jinja`).
 
 ## The `{{ ai_folder }}` directory
 

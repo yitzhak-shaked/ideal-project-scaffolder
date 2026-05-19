@@ -14,16 +14,70 @@
 
 ## Project conventions
 
-Before answering or editing code, load the relevant convention files:
+Before answering or editing code, load the relevant convention files.
+They are authoritative — if anything in this file conflicts, they win.
 
-- @{{ ai_folder }}/instructions/coding-conventions.md
-- @{{ ai_folder }}/instructions/architecture.md
-- @{{ ai_folder }}/instructions/testing.md
-- @{{ ai_folder }}/instructions/security.md
+**General (always):**
 
-These contain the project's coding style, layering rules, test expectations,
-and security posture. Treat them as authoritative — if something here conflicts
-with them, they win.
+- @{{ ai_folder }}/instructions/general/coding-conventions.md
+- @{{ ai_folder }}/instructions/general/architecture.md
+- @{{ ai_folder }}/instructions/general/ddd.md
+- @{{ ai_folder }}/instructions/general/tdd.md
+- @{{ ai_folder }}/instructions/general/testing.md
+- @{{ ai_folder }}/instructions/general/security.md
+{% if 'python' in languages %}
+**Python (when touching Python):**
+
+- @{{ ai_folder }}/instructions/python/zen.md
+- @{{ ai_folder }}/instructions/python/style.md
+- @{{ ai_folder }}/instructions/python/tooling.md
+- @{{ ai_folder }}/instructions/python/design.md
+- @{{ ai_folder }}/instructions/python/patterns.md
+- @{{ ai_folder }}/instructions/python/code-smells.md
+- @{{ ai_folder }}/instructions/python/testing.md
+{% endif %}{% if 'rust' in languages %}
+**Rust (when touching Rust):**
+
+- @{{ ai_folder }}/instructions/rust/style.md
+- @{{ ai_folder }}/instructions/rust/tooling.md
+- @{{ ai_folder }}/instructions/rust/design.md
+- @{{ ai_folder }}/instructions/rust/patterns.md
+- @{{ ai_folder }}/instructions/rust/code-smells.md
+- @{{ ai_folder }}/instructions/rust/testing.md
+{% endif %}{% if 'typescript' in languages %}
+**TypeScript (when touching TS):**
+
+- @{{ ai_folder }}/instructions/typescript/style.md
+- @{{ ai_folder }}/instructions/typescript/tooling.md
+- @{{ ai_folder }}/instructions/typescript/design.md
+- @{{ ai_folder }}/instructions/typescript/patterns.md
+- @{{ ai_folder }}/instructions/typescript/code-smells.md
+- @{{ ai_folder }}/instructions/typescript/testing.md
+{% endif %}{% if 'cpp' in languages %}
+**C/C++ (when touching C/C++):**
+
+- @{{ ai_folder }}/instructions/cpp/style.md
+- @{{ ai_folder }}/instructions/cpp/tooling.md
+- @{{ ai_folder }}/instructions/cpp/design.md
+- @{{ ai_folder }}/instructions/cpp/patterns.md
+- @{{ ai_folder }}/instructions/cpp/code-smells.md
+- @{{ ai_folder }}/instructions/cpp/testing.md
+{% endif %}
+## Working style
+
+- **Micro-implementation is test-driven.** Write a failing test before
+  the code that makes it pass. See `general/tdd.md`. The `tdd-cycle`
+  skill walks the loop.
+- **Design is DDD.** Use the ubiquitous language; respect layering;
+  keep domain pure. See `general/ddd.md`. The `ddd-architect` subagent
+  designs new features.
+{% if 'python' in languages %}- **Python runs through `uv`.** Never invoke `python`, `pip`,
+  `virtualenv`, or `poetry` directly. Always `uv run ...`,
+  `uv add ...`, `uv sync`. See `python/tooling.md`. The
+  `python-uv-setup` skill handles env operations.
+{% endif %}- **Refactor against the taxonomy.** When you spot a code smell, use
+  the `refactor-code-smell` skill. The `design-review` skill audits a
+  single unit; the `code-reviewer` subagent reviews a whole diff.
 
 ## Source layout
 
@@ -67,5 +121,10 @@ No MCP servers preconfigured. Add some to `.mcp.json` if needed.
 
 - Use the `Justfile` recipes (`just test`, `just lint`) rather than invoking
   language toolchains directly.
-- See `{{ ai_folder }}/skills/` for project-specific skills you can invoke.
-- See `{{ ai_folder }}/agents/` for project-specific subagent definitions.
+- Project skills live in `{{ ai_folder }}/skills/` — `tdd-cycle`,
+  `design-review`, `refactor-code-smell`, `lint-and-format`,
+  `run-tests`, `update-changelog`{% if 'python' in languages %}, `python-uv-setup`{% endif %}.
+- Project subagents live in `{{ ai_folder }}/agents/` — `code-reviewer`,
+  `ddd-architect`, `tdd-driver`{% if 'python' in languages %}, `python-refactorer`{% endif %}.
+- Start with `{{ ai_folder }}/instructions/general/README.md` and
+  `{{ ai_folder }}/instructions/python/README.md` for the reading order.

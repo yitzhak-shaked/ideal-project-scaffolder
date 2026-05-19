@@ -1,0 +1,33 @@
+# Rust instructions
+
+Rust-specific rules for this project. Load these *in addition to* the
+general instructions in `../general/`. The Rust file wins for Rust code
+where the two might disagree.
+
+| File | When to load |
+| --- | --- |
+| `style.md` | Always when writing Rust. Naming, formatting, doc comments, modules. |
+| `tooling.md` | Whenever a dependency changes or you run a Rust command. `cargo` + `clippy` + `rustfmt`. |
+| `design.md` | Whenever you model a new type, trait, or module. Ownership, traits-as-interfaces, type-state. |
+| `patterns.md` | When you reach for a Rust idiom — newtype, builder, enum-as-tagged-union, RAII guard. |
+| `code-smells.md` | When you spot — or are about to write — code that violates the idioms below. |
+| `testing.md` | Whenever you write or run Rust tests. Inline `#[cfg(test)]`, proptest, criterion. |
+
+## Reading order
+
+1. `style.md` (the baseline).
+2. `tooling.md` (so you can run anything).
+3. `design.md` and `patterns.md` (the modelling toolbox).
+4. `code-smells.md` (what to refactor against).
+5. `testing.md` (the test discipline).
+
+## External authorities
+
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/) —
+  the official "is your library shaped right?" checklist.
+- [The Rust Reference](https://doc.rust-lang.org/reference/) and
+  [The Rust Book](https://doc.rust-lang.org/book/) — language.
+- *Effective Rust* (David Drysdale) — pragmatic idioms.
+- *Rust for Rustaceans* (Jon Gjengset) — deeper architecture.
+- [Rust Design Patterns](https://rust-unofficial.github.io/patterns/)
+  — the community catalogue.

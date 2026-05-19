@@ -1,0 +1,202 @@
+# TypeScript design philosophy
+
+TypeScript's type system is the design tool. Use it to make wrong code
+impossible to write — and when you can't, to make it loud at compile
+time.
+
+Companion reading: *Effective TypeScript* (Dan Vanderkam),
+*Total TypeScript* (Matt Pocock).
+
+## Type-first thinking
+
+Sketch the *types* before the implementation. The signatures and the
+data shapes are the design.
+
+```ts
+// First: what does the function take? What does it return?
+function placeOrder(
+  cmd: PlaceOrderCommand,
+  repo: OrderRepository,
+): Promise<Result<OrderId, OrderError>>;
+
+// Now the implementation has nowhere to hide.
+```
+
+If the type is hard to write, the operation is hard to specify — fix
+the spec, not the code.
+
+## Make invalid states unrepresentable
+
+The single most useful TS pattern.
+
+### Discriminated unions over "the bag of optionals"
+
+```ts
+// Bad: every field is optional; many illegal combinations
+type Order = {
+  status: string;
+  paidAt?: Date;
+  shippedAt?: Date;
+  refundReason?: string;
+};
+
+// Good: each variant carries only the fields that can exist in it
+type Order =
+  | { status: "placed"; placedAt: Date }
+  | { status: "paid"; placedAt: Date; paidAt: Date }
+  | { status: "shipped"; placedAt: Date; paidAt: Date; shippedAt: Date }
+  | { status: "refunded"; placedAt: Date; refundReason: string };
+```
+
+A `switch (order.status)` now narrows the type and TypeScript checks
+exhaustiveness if you ask it to (see `patterns.md`).
+
+### Branded types for domain primitives
+
+```ts
+type Brand<T, B> = T & { readonly __brand: B };
+type UserId  = Brand<string, "UserId">;
+type OrderId = Brand<string, "OrderId">;
+
+function userId(s: string): UserId { return s as UserId; }
+function orderId(s: string): OrderId { return s as OrderId; }
+
+function charge(user: UserId, order: OrderId) { /* … */ }
+
+charge(orderId("o1"), userId("u1")); // ❌ compile error: arguments swapped
+```
+
+Zero runtime cost. Eliminates a class of argument-swap bugs.
+
+### `as const` for literal-typed configuration
+
+```ts
+const STATUSES = ["placed", "paid", "shipped", "refunded"] as const;
+type Status = typeof STATUSES[number];   // "placed" | "paid" | ...
+```
+
+The runtime array and the compile-time union stay in sync.
+
+## Read-only by default
+
+`readonly` and `ReadonlyArray<T>` should be the default; mutability is
+opt-in.
+
+- Function parameters: `readonly T[]` unless you actually need to push.
+- Returned arrays: same.
+- Class fields that don't change after construction: `readonly`.
+- Constants: `as const`.
+
+```ts
+function summarise(orders: readonly Order[]): Summary { /* … */ }
+```
+
+A `readonly T[]` accepts a regular `T[]`, so callers aren't burdened.
+
+## Composition over inheritance
+
+Same heuristic as the rest of the codebase. Reach for:
+
+- **Interface / type composition** for "has-a":
+
+  ```ts
+  type WithTimestamps = { createdAt: Date; updatedAt: Date };
+  type Order = WithTimestamps & { id: OrderId; total: Money };
+  ```
+
+- **Function composition** for behavior pipelines.
+
+- **Dependency injection** via constructor / parameter rather than
+  inheriting from a base class:
+
+  ```ts
+  class PlaceOrderUseCase {
+    constructor(
+      private readonly orders: OrderRepository,
+      private readonly clock: Clock,
+    ) {}
+    async execute(cmd: PlaceOrderCommand): Promise<OrderId> { /* … */ }
+  }
+  ```
+
+Reserve `class extends class` for framework conventions that require
+it (e.g. `extends Error`, `extends React.Component` if you still use
+class components).
+
+## `unknown` over `any`
+
+When you can't (or shouldn't) name a type yet, `unknown`. The compiler
+will force you to narrow before use — which is the entire point.
+
+```ts
+function parseJson(text: string): unknown { return JSON.parse(text); }
+
+const data = parseJson(text);
+if (isOrderDTO(data)) {  // user-defined type predicate
+  // data is OrderDTO here
+}
+```
+
+For untrusted input from the network or disk, use a **schema
+validator** (`zod`, `valibot`, `arktype`). Validate once at the
+boundary; the inferred type flows through the rest of the system.
+
+```ts
+const OrderDTO = z.object({ id: z.string().uuid(), total: z.number().positive() });
+type OrderDTO = z.infer<typeof OrderDTO>;
+```
+
+## Exhaustive checking
+
+When matching on a discriminated union, add an `assertNever` arm so
+adding a new variant is a compile error at every switch:
+
+```ts
+function describe(o: Order): string {
+  switch (o.status) {
+    case "placed":   return "placed";
+    case "paid":     return "paid";
+    case "shipped":  return "shipped";
+    case "refunded": return "refunded";
+    default: {
+      const _exhaustive: never = o;
+      throw new Error(`Unhandled status: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+}
+```
+
+The `: never` annotation fails at the new variant; the runtime throw
+covers cases narrowing miss (shouldn't happen, but defence-in-depth).
+
+## The Clean Architecture mapping
+
+Same as the rest of the project:
+
+| Layer | TS expression |
+| --- | --- |
+| `domain` | Plain types, pure functions, class methods. **No `fetch`, no DB driver, no framework imports.** Define `interface OrderRepository` here. |
+| `application` | Use-case classes/functions that take `OrderRepository` etc. via DI. |
+| `infrastructure` | Concrete implementations: `PrismaOrderRepository`, `FetchHttpClient`. |
+| `presentation` | HTTP framework (Express/Fastify/Next) routes that parse → call use case → render. The composition root lives here. |
+
+## Async hygiene
+
+- Don't fire-and-forget promises in production paths. The lint catches
+  them; keep `no-floating-promises` on.
+- Concurrency: `Promise.all` for "all must succeed",
+  `Promise.allSettled` for "tell me what happened to each".
+- Cancellation: pass an `AbortSignal` through long-running operations.
+  Most modern fetch/IO APIs accept one.
+- Avoid mixing callbacks and promises. Wrap callback APIs in
+  `util.promisify` (Node) or a small adapter.
+
+## Performance hygiene (not premature)
+
+- Iterators / generators / streams when data is large. Don't materialise
+  a million-row result into an array.
+- Avoid creating new arrays inside hot loops; use `for` for the hottest
+  paths.
+- Don't `JSON.stringify` for object equality. Use `lodash.isEqual` or
+  a structural equality helper.
+- Use typed arrays (`Uint8Array`, etc.) for binary data.

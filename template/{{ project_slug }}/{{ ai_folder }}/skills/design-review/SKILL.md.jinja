@@ -1,0 +1,115 @@
+---
+name: design-review
+description: Review a class, function, or module against the project's design principles before it lands. ALWAYS use this skill when the user shares new code and asks "is this OK?", "review this design", "before I commit, check this", "does this follow our conventions?", or when about to merge a non-trivial change. Different from code-review (the agent) in that this is a focused design pass on a specific unit.
+---
+
+# Design review
+
+A focused review of a single unit (class, function, module, or diff)
+against this project's design principles. Smaller than a full code
+review — sharper than an ad-hoc "looks fine".
+
+## Steps
+
+### 1. Load the rules
+
+- `@{{ ai_folder }}/instructions/general/coding-conventions.md`
+- `@{{ ai_folder }}/instructions/general/architecture.md`
+- `@{{ ai_folder }}/instructions/general/ddd.md`
+{% if 'python' in languages %}- `@{{ ai_folder }}/instructions/python/design.md`
+- `@{{ ai_folder }}/instructions/python/patterns.md`
+- `@{{ ai_folder }}/instructions/python/code-smells.md`
+{% endif %}
+
+### 2. Run the checklist
+
+Score the code on each. Each item is a pass/fail/N-A.
+
+**Layering**
+- [ ] Does this code live in the right layer (domain / application /
+      infrastructure / presentation)?
+- [ ] Does its `import`s match the allowed direction? (domain imports
+      nothing internal; application imports only domain; presentation
+      never imports infrastructure directly.)
+- [ ] Is creation separated from use? (Dependencies injected, not
+      instantiated inside?)
+
+**Modelling**
+- [ ] Are domain concepts represented by named types, not raw
+      primitives?
+- [ ] Are invariants enforced *at construction* (value objects,
+      entity factories), not at every call site?
+- [ ] If this is an entity, is identity stable and equality by ID?
+- [ ] If this is a value object, is it immutable and equal by value?
+- [ ] Does any aggregate boundary stay small? (No 50-field root.)
+
+**Functions and classes**
+- [ ] One job per function. No "and" in the responsibility description.
+- [ ] No boolean flag parameters that flip behaviour.
+- [ ] No more than ~4 parameters (else: context object).
+- [ ] No `isinstance` chains dispatching different logic (else:
+      polymorphism or dispatch dict).
+- [ ] If a class — does it have real state? Or is it a module of
+      functions in disguise?
+
+**Errors**
+- [ ] Specific exception types, never bare `except:`.
+- [ ] Errors documented in docstrings (`Raises:`).
+- [ ] Validation at the boundary; inner layers trust the types.
+
+**Tests**
+- [ ] Does this change have tests? (If new behaviour: yes. If pure
+      refactor: existing tests cover it.)
+- [ ] Do the tests check *behaviour* or implementation? (Behaviour is
+      the right answer.)
+- [ ] AAA layout, one logical assertion, descriptive name.
+
+{% if 'python' in languages %}**Python-specific**
+- [ ] Type hints on all public signatures.
+- [ ] `from __future__ import annotations` at the top.
+- [ ] Modern syntax (`list[str]`, `X | None`).
+- [ ] `Protocol` (not `ABC`) for decoupling abstractions.
+- [ ] `@property` only for cheap, side-effect-free reads.
+- [ ] No mutable default arguments.
+- [ ] Money is `Decimal`, not `float`. Paths are `pathlib.Path`.
+- [ ] No wildcard imports.
+{% endif %}
+
+### 3. Categorise findings
+
+Tag each finding by severity:
+
+- **Block** — must fix before merge. Layering violation, dangerous
+  bug, security issue.
+- **Recommend** — should fix. Smell, but not a correctness issue.
+- **Note** — minor style or naming. Author's call.
+
+### 4. Propose concrete fixes
+
+For each `Block` and `Recommend`, sketch the fix — at minimum, name the
+pattern or the relevant section of an instruction file.
+
+## Reporting back
+
+Format:
+
+```
+## Design review of <thing>
+
+### Block (N)
+- ...
+
+### Recommend (N)
+- ...
+
+### Note (N)
+- ...
+
+### Overall
+- Verdict: ship / fix-then-ship / rework
+- Strengths worth keeping: ...
+```
+
+Be specific. "Add types" is useless feedback; "the return type of
+`charge()` is `Any` because of the cast on line 47 — narrow it to
+`PaymentResult`" is useful feedback.

@@ -1,0 +1,171 @@
+# Rust code smells
+
+Anti-patterns this project refactors against. Each entry: the smell,
+why it hurts, the cure.
+
+## `unwrap()` / `expect()` in production paths
+
+**Smell.** `let x = foo().unwrap();` in a library or service path.
+
+**Why.** A `Result::Err` or `Option::None` becomes a process-killing
+panic. Any caller invariant you imagined isn't enforced.
+
+**Cure.** `?` to propagate, `match` to handle. `expect("…")` is
+acceptable only when the invariant *cannot* be violated and you can
+explain why in the message. Tests and `main()` can `unwrap`; production
+code paths cannot.
+
+## `.clone()` to silence the borrow checker
+
+**Smell.** A `.clone()` on every reference because reasoning about
+lifetimes felt hard.
+
+**Why.** Each clone is a real copy. Hot paths suffer. The clone often
+hides a design problem the borrow checker was actually pointing at.
+
+**Cure.** Borrow (`&T`). Restructure (move the data into the function
+once). Use `Cow`. Only clone when the cost is acceptable *and* you
+know it's a copy.
+
+## Primitive obsession
+
+**Smell.** `fn charge(user_id: u64, amount: u32, currency: String)`.
+
+**Why.** Argument-order bugs become silent. Domain validation is at
+every call site. The type checker can't help.
+
+**Cure.** Newtypes (`UserId`, `Money`, `Currency`). See `patterns.md`.
+
+## Stringly-typed APIs
+
+**Smell.** `fn set_status(status: &str)` accepting `"pending"`,
+`"paid"`, `"refunded"`.
+
+**Why.** Typos go to runtime. Adding a status doesn't update call
+sites. Exhaustive matching is impossible.
+
+**Cure.** An `enum Status { Pending, Paid, Refunded }`. The compiler
+now checks every site.
+
+## `Box<dyn Trait>` when generics would do
+
+**Smell.** `fn render(r: Box<dyn Renderer>)` in a place where one
+concrete renderer is passed.
+
+**Why.** Dynamic dispatch, heap allocation, lost monomorphisation
+optimisations, optional vtable indirection.
+
+**Cure.** `fn render<R: Renderer>(r: R)` or `fn render(r: impl
+Renderer)`. Reserve `dyn` for true heterogeneity (a list of mixed
+implementers).
+
+## `Rc<RefCell<T>>` in the domain layer
+
+**Smell.** Shared mutable state inside `src/domain/`.
+
+**Why.** Interior mutability defeats the borrow checker's analysis;
+runtime borrow panics become possible; the design has hidden coupling.
+
+**Cure.** Pass references through. Use an owning struct that exposes
+`&mut` to one caller at a time. If you genuinely need shared mutable
+state, lift it to `application/` or `infrastructure/`.
+
+## `Vec` parameters
+
+**Smell.** `fn sum(items: Vec<u32>)`.
+
+**Why.** Forces the caller to allocate or move. `&[u32]` works just as
+well and is strictly more flexible.
+
+**Cure.** `fn sum(items: &[u32])`. Same for `String` → `&str` in
+parameters.
+
+## Wide `match` arms with `_ => {}` swallowing variants
+
+**Smell.** A `match` over an enum with `_ => {}` as the last arm to
+"handle the rest".
+
+**Why.** Adding a new variant won't trigger an exhaustiveness error.
+The new variant is silently dropped.
+
+**Cure.** Match every variant explicitly. Add a final `// no-op for X
+and Y` rather than `_`. When you genuinely need a catch-all, name the
+arms and add `#[non_exhaustive]` on your enum upstream.
+
+## Re-deriving when a method exists
+
+**Smell.** `impl Debug for Foo { fn fmt(...) ... }` that exactly
+matches what `#[derive(Debug)]` would produce.
+
+**Why.** Maintenance burden, drift from upstream behaviour.
+
+**Cure.** Derive when possible. Hand-roll only when you need custom
+formatting (e.g. redacting secrets).
+
+## Generic-soup signatures
+
+**Smell.** `fn foo<A: B + C + D, E: F<G = H>, I, J>(a: A, e: E, ...)`.
+
+**Why.** Unreadable. Hard to call. Compile times bloom.
+
+**Cure.** Extract trait aliases (when stable: `trait Logger = Display
++ Sync + Send;`). Use named lifetimes. Split the function. Group
+related parameters into a struct.
+
+## Naming things `Manager`, `Helper`, `Service` with no further specifics
+
+**Smell.** `struct UserManager`, `impl UserManager { fn get_user, fn
+create_user, fn update_user, fn delete_user }`.
+
+**Why.** "Manager" describes everything and nothing. Such structs
+attract responsibilities until they're God Objects.
+
+**Cure.** Split into focused types named for what they actually own —
+`UserRepository`, `UserAuthenticator`, `UserDtoMapper`. (DDD
+vocabulary; see `general/ddd.md`.)
+
+## Mixing async colours
+
+**Smell.** An async function that internally blocks (`std::fs::read`,
+`std::thread::sleep`, sync database call).
+
+**Why.** Blocks the runtime's executor thread; can deadlock multi-task
+workloads.
+
+**Cure.** Use the async equivalent (`tokio::fs::read`,
+`tokio::time::sleep`). For unavoidable sync work,
+`tokio::task::spawn_blocking`.
+
+## Unsafe without a `SAFETY:` comment
+
+**Smell.** `unsafe { … }` with no comment, or a comment that says
+"this is fine".
+
+**Why.** The reviewer cannot tell whether the invariants hold. The
+next refactor may break them silently.
+
+**Cure.** Every `unsafe` block has a `// SAFETY:` comment listing the
+caller-side invariants. The pair *(unsafe code, safety comment)* is
+the audit unit.
+
+## "It compiles" as the bar
+
+**Smell.** Code that compiles, clippy is silenced with `#[allow(...)]`
+sprinkled on top, and a test happens to pass.
+
+**Why.** Future readers don't know what the silences mean. The
+silences accumulate. The codebase rots.
+
+**Cure.** Each `#[allow(...)]` is on a single item with a comment
+explaining *why* the lint is wrong for that specific case. Crate-wide
+`#![allow(...)]` is forbidden.
+
+## Re-implementing the standard library
+
+**Smell.** Hand-rolled `iter()` adapters. Manual binary search. Custom
+ordered map.
+
+**Why.** Slower, buggier, harder to read.
+
+**Cure.** `std::collections`, `std::iter`, `std::cmp`. Search before
+implementing.

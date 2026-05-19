@@ -14,14 +14,63 @@
 
 ## Project conventions — read first
 
-Before answering or editing code, read these files in `{{ ai_folder }}/instructions/`:
+Before answering or editing code, read the files in
+`{{ ai_folder }}/instructions/`. They are authoritative — if anything
+in this file conflicts, they win.
 
-- `coding-conventions.md` — language style and idioms
-- `architecture.md` — DDD layering rules
-- `testing.md` — what / where / how to test
-- `security.md` — security posture and constraints
+**General (always):**
 
-They are authoritative — if anything here conflicts with them, they win.
+- `general/coding-conventions.md` — language-agnostic style and idioms
+- `general/architecture.md` — DDD layering rules
+- `general/ddd.md` — domain modelling (entities, value objects, aggregates, repos, UoW)
+- `general/tdd.md` — test-driven micro-implementation
+- `general/testing.md` — what / where / how to test
+- `general/security.md` — security posture
+{% if 'python' in languages %}
+**Python (when touching Python):**
+
+- `python/zen.md` — PEP 20
+- `python/style.md` — formatting, type hints, docstrings
+- `python/tooling.md` — `uv`, `ruff`, `mypy`, `pytest`
+- `python/design.md` — composition, DI, protocols, properties vs methods
+- `python/patterns.md` — value objects, policy, context object, unit of work
+- `python/code-smells.md` — refactor against this taxonomy
+- `python/testing.md` — pytest, hypothesis, mutation, classical school
+{% endif %}{% if 'rust' in languages %}
+**Rust (when touching Rust):**
+
+- `rust/style.md` — naming, edition, error handling (thiserror / anyhow), lints
+- `rust/tooling.md` — cargo, clippy, rustfmt, useful subcommands
+- `rust/design.md` — ownership, traits, type-state, make-invalid-states-unrepresentable
+- `rust/patterns.md` — newtype, builder, RAII guards, enum dispatch, Cow
+- `rust/code-smells.md` — `.unwrap()`, gratuitous `.clone()`, `Box<dyn>` over generics
+- `rust/testing.md` — `#[cfg(test)]`, proptest, criterion, cargo-nextest
+{% endif %}{% if 'typescript' in languages %}
+**TypeScript (when touching TS):**
+
+- `typescript/style.md` — strict mode, naming, no-any, branded types
+- `typescript/tooling.md` — npm/pnpm, tsc, Biome, Vitest
+- `typescript/design.md` — discriminated unions, branded types, exhaustive matching
+- `typescript/patterns.md` — Result, policy, exhaustive switch, DI, schema-validated boundaries
+- `typescript/code-smells.md` — `any`, bag-of-optionals, floating promises, `enum` abuse
+- `typescript/testing.md` — Vitest, fast-check, classical school
+{% endif %}{% if 'cpp' in languages %}
+**C/C++ (when touching C/C++):**
+
+- `cpp/style.md` — C++20, naming, headers, smart pointers, error handling
+- `cpp/tooling.md` — CMake presets, vcpkg/Conan, sanitisers, clang-tidy
+- `cpp/design.md` — RAII, value semantics, ownership in types, concepts, composition
+- `cpp/patterns.md` — strong types, RAII guards, variant+visit, concepts, PIMPL, NVI
+- `cpp/code-smells.md` — raw new/delete, C-style casts, slicing, default args on virtuals
+- `cpp/testing.md` — GoogleTest / Catch2, fixtures, parametrize, rapidcheck, sanitisers
+{% endif %}
+## Working style
+
+- **Micro-implementation is test-driven** (red-green-refactor). See `general/tdd.md`.
+- **Design is DDD**: ubiquitous language, layering, pure domain. See `general/ddd.md`.
+{% if 'python' in languages %}- **Python runs through `uv`** — never `python`, `pip`, `poetry`, `virtualenv` directly. Always `uv run ...`, `uv add ...`. See `python/tooling.md`.
+{% endif %}- **Skills** in `{{ ai_folder }}/skills/`: `tdd-cycle`, `design-review`, `refactor-code-smell`, `lint-and-format`, `run-tests`{% if 'python' in languages %}, `python-uv-setup`{% endif %}.
+- **Subagents** in `{{ ai_folder }}/agents/`: `code-reviewer`, `ddd-architect`, `tdd-driver`{% if 'python' in languages %}, `python-refactorer`{% endif %}.
 
 ## Source layout
 

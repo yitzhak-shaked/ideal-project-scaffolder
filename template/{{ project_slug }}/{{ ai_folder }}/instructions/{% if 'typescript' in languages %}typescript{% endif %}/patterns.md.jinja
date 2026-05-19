@@ -1,0 +1,233 @@
+# TypeScript patterns
+
+Recipes. Pair with `design.md` (the principles) and `code-smells.md`
+(what each pattern fixes).
+
+## Branded types (value objects)
+
+```ts
+declare const brand: unique symbol;
+type Brand<T, B> = T & { readonly [brand]: B };
+
+export type UserId    = Brand<string, "UserId">;
+export type Email     = Brand<string, "Email">;
+export type MoneyUSD  = Brand<number, "MoneyUSD">;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function email(s: string): Email {
+  if (!EMAIL_RE.test(s)) throw new RangeError(`invalid email: ${s}`);
+  return s as Email;
+}
+```
+
+Constructors validate. Once you hold a `UserId` / `Email` / `MoneyUSD`,
+the rest of the code can trust it.
+
+## Result type — errors as values
+
+```ts
+export type Result<T, E = Error> =
+  | { ok: true;  value: T }
+  | { ok: false; error: E };
+
+export const ok    = <T>(value: T): Result<T, never>          => ({ ok: true,  value });
+export const err   = <E>(error: E): Result<never, E>          => ({ ok: false, error });
+
+export function map<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
+  return r.ok ? ok(f(r.value)) : r;
+}
+
+export function andThen<T, U, E>(r: Result<T, E>, f: (t: T) => Result<U, E>): Result<U, E> {
+  return r.ok ? f(r.value) : r;
+}
+```
+
+Domain functions return `Result<T, DomainError>`. The application layer
+maps to HTTP / CLI exit codes. Or use [`neverthrow`](https://github.com/supermacro/neverthrow)
+for a fuller toolbox.
+
+## Discriminated unions + exhaustive switch
+
+```ts
+type Event =
+  | { kind: "OrderPlaced";    orderId: OrderId; at: Date }
+  | { kind: "PaymentReceived";orderId: OrderId; amount: MoneyUSD }
+  | { kind: "OrderShipped";   orderId: OrderId; at: Date };
+
+function handle(e: Event): void {
+  switch (e.kind) {
+    case "OrderPlaced":     return placed(e);
+    case "PaymentReceived": return paid(e);
+    case "OrderShipped":    return shipped(e);
+    default: {
+      const _: never = e;
+      throw new Error(`unhandled event: ${JSON.stringify(_)}`);
+    }
+  }
+}
+```
+
+Adding a fourth variant fails to compile at *every* switch on `Event`.
+
+## Strategy via record-of-functions
+
+```ts
+type Renderer = (doc: Document) => string;
+
+const renderers: Record<string, Renderer> = {
+  pdf:       renderPdf,
+  html:      renderHtml,
+  plaintext: renderPlaintext,
+};
+
+export function render(doc: Document, fmt: string): string {
+  const r = renderers[fmt];
+  if (!r) throw new Error(`unsupported format: ${fmt}`);
+  return r(doc);
+}
+```
+
+Strictly typed: when `fmt` is a discriminated-union literal, narrow
+the record key type to make `renderers[fmt]` non-nullable.
+
+## Policy pattern — kill the boolean flag
+
+```ts
+type OrderPolicy = (o: Order) => Order;
+
+const applyVipDiscount: OrderPolicy = (o) => ({ ...o, total: discounted(o.total) });
+const expressShipping:  OrderPolicy = (o) => ({ ...o, shipping: "express" });
+
+export function processOrder(o: Order, policies: readonly OrderPolicy[]): Order {
+  return policies.reduce((acc, p) => p(acc), o);
+}
+```
+
+Caller composes:
+
+```ts
+processOrder(order, [applyVipDiscount, expressShipping]);
+```
+
+No flag combinatorics, no `if/else` cascade, each policy is trivially
+unit-testable.
+
+## Context object — kill parameter bloat
+
+```ts
+type ReportContext = Readonly<{
+  period:   DateRange;
+  currency: Currency;
+  tenant:   TenantId;
+  locale:   string;
+  includeDrafts: boolean;
+}>;
+
+export function buildReport(ctx: ReportContext): Report { /* … */ }
+```
+
+Internal helpers depend only on the fields they read:
+
+```ts
+type PeriodProvider = Pick<ReportContext, "period">;
+function summarise(p: PeriodProvider): Summary { /* … */ }
+```
+
+## Dependency injection via constructor
+
+```ts
+export class PlaceOrderUseCase {
+  constructor(
+    private readonly orders: OrderRepository,
+    private readonly clock: Clock,
+    private readonly publish: EventPublisher,
+  ) {}
+
+  async execute(cmd: PlaceOrderCommand): Promise<OrderId> {
+    const order = Order.fromCommand(cmd, this.clock.now());
+    await this.orders.save(order);
+    await this.publish({ kind: "OrderPlaced", orderId: order.id, at: order.placedAt });
+    return order.id;
+  }
+}
+```
+
+`OrderRepository`, `Clock`, `EventPublisher` are *interfaces*
+(declared in `domain/`); concrete implementations are wired at the
+composition root.
+
+## Builder for complex configuration
+
+```ts
+type Defined<T> = T extends undefined ? never : T;
+
+class HttpClientBuilder<Stage extends "init" | "configured" = "init"> {
+  private constructor(private readonly cfg: Partial<HttpClientConfig>) {}
+  static new(): HttpClientBuilder<"init"> { return new HttpClientBuilder({}); }
+
+  baseUrl(this: HttpClientBuilder, u: URL): HttpClientBuilder<"configured"> {
+    return new HttpClientBuilder({ ...this.cfg, baseUrl: u }) as HttpClientBuilder<"configured">;
+  }
+  timeout(ms: number) { return new HttpClientBuilder({ ...this.cfg, timeoutMs: ms }) as this; }
+
+  // `build` only exists on the "configured" type-state
+  build(this: HttpClientBuilder<"configured">): HttpClient {
+    return new HttpClient(this.cfg as HttpClientConfig);
+  }
+}
+```
+
+Type-state in TS feels heavier than in Rust but works the same way:
+`.build()` is reachable only when required steps have been taken.
+
+## Schema-first boundary validation
+
+```ts
+import { z } from "zod";
+
+export const PlaceOrderCommand = z.object({
+  customerId: z.string().uuid(),
+  items: z.array(z.object({
+    sku:      z.string(),
+    quantity: z.number().int().positive(),
+  })).nonempty(),
+});
+export type PlaceOrderCommand = z.infer<typeof PlaceOrderCommand>;
+```
+
+In the presentation layer, parse with `PlaceOrderCommand.parse(req.body)`.
+Past that point the type is trusted.
+
+## Composition root
+
+One function (`app.ts` or `bootstrap.ts`) wires concrete adapters into
+generic use cases.
+
+```ts
+export async function buildApp(env: Env): Promise<App> {
+  const db      = await connectDatabase(env.DATABASE_URL);
+  const orders  = new PrismaOrderRepository(db);
+  const clock   = systemClock();
+  const publish = createSnsPublisher(env.SNS_TOPIC_ARN);
+
+  const placeOrder = new PlaceOrderUseCase(orders, clock, publish);
+
+  return makeApp({ placeOrder });
+}
+```
+
+No other module reads `process.env` or constructs adapters.
+
+## React-specific (if applicable)
+
+When using React in `presentation/`:
+
+- Hooks over class components.
+- Components are pure of state where possible — push state up.
+- Co-locate types with components: `Props` interface immediately above
+  the component.
+- Prefer `useReducer` for complex local state; the reducer is your
+  test target.
+- Server Components for things that genuinely don't need
+  interactivity; Client Components for things that do.

@@ -1,0 +1,171 @@
+# TypeScript style
+
+The authoritative external references are the
+[Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)
+and the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html).
+Rules below either match or tighten them.
+
+## Formatting
+
+- **Formatter:** [Biome](https://biomejs.dev/) if the project uses it,
+  Prettier otherwise. Never hand-format. Run via `npm run format` /
+  the project's package script.
+- **Line length:** 100. Trailing commas everywhere.
+- **Semicolons:** yes. (Both Biome and Prettier defaults; the
+  no-semicolon style breaks too many ASI edge cases.)
+
+## TypeScript version and compiler
+
+- **TypeScript 5.4+** minimum. Use a recent version (5.7+).
+- `tsconfig.json` must enable **strict mode** at a minimum:
+
+  ```jsonc
+  {
+    "compilerOptions": {
+      "strict": true,                     // enables all strict checks
+      "noUncheckedIndexedAccess": true,   // arr[i] is T | undefined
+      "noImplicitOverride": true,
+      "noFallthroughCasesInSwitch": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "exactOptionalPropertyTypes": true,
+      "moduleResolution": "Bundler",      // or "NodeNext"
+      "verbatimModuleSyntax": true,
+      "isolatedModules": true,
+      "target": "ES2022",
+      "module": "ESNext"
+    }
+  }
+  ```
+
+  Don't loosen these. If you must, justify it in a comment next to the
+  override.
+
+## `any` is banned
+
+- `any` defeats the entire point of TypeScript. The lint catches it;
+  don't suppress.
+- For genuinely-unknown input (untrusted JSON, dynamic plugins, etc.),
+  use `unknown` and **narrow** with type predicates or schema
+  validation (`zod`, `valibot`, `arktype`).
+- For library types you can't be bothered to model yet, `unknown`,
+  not `any`. The cost of `unknown` (you must narrow) is the feature.
+
+## Naming
+
+- `camelCase` — variables, functions, methods, properties, file names
+  for modules (`orderService.ts`, not `OrderService.ts`).
+- `PascalCase` — types, interfaces, classes, enums, type parameters.
+- `UPPER_SNAKE_CASE` — module-level constants that are truly
+  compile-time constants. Not for `const x = foo()` (that's just a
+  `const` binding).
+- `_underscorePrefix` — never. TS has `private`/`#private`. Use them.
+- Boolean names are predicates: `isReady`, `hasPayment`, `canRefund`.
+- Don't abbreviate: `userCount`, not `uc`. Two-letter exceptions for
+  well-known terms (`id`, `db`, `ui`) are fine.
+
+## Type design
+
+- Prefer `type` aliases over `interface` for new code. The differences
+  are subtle (interfaces merge, types don't); types are stricter and
+  compose more cleanly with conditional types.
+- Use `interface` only when you genuinely want declaration merging
+  (rare — typically for augmenting third-party types).
+- Use `readonly` aggressively. `readonly T[]`, `readonly Map`, `as
+  const` for literal-typed objects. Mutation is a deliberate choice,
+  not a default.
+- Use discriminated unions for sum types:
+
+  ```ts
+  type Result<T> =
+    | { ok: true; value: T }
+    | { ok: false; error: string };
+  ```
+
+  Adding a variant forces every `switch` to update. See `patterns.md`.
+
+- Use **branded types** for domain primitives that need identity:
+
+  ```ts
+  type UserId = string & { readonly brand: unique symbol };
+  function userId(s: string): UserId { return s as UserId; }
+  ```
+
+## Imports and modules
+
+- ES modules only (`import` / `export`). Never `require`.
+- Named exports by default. Default exports only for framework
+  conventions (e.g. Next.js pages, certain webpack plugin formats).
+- `import type` for types you only use in type positions. This drops
+  the runtime import (and `verbatimModuleSyntax` will enforce it).
+- Import order (Biome / ESLint can sort): node builtins → external
+  packages → first-party (`@/...`) → relative (`./...`, `../...`).
+- No barrel files (`index.ts` that re-exports everything) in
+  application code. They wreck tree-shaking and create circular import
+  hazards. Library packages may have a single root barrel as the
+  public entry.
+
+## Docs
+
+- Use TSDoc (`/** ... */`) for exported items. Editor hover relies on
+  it.
+
+  ```ts
+  /**
+   * Calculates the area of a circle.
+   *
+   * @param radius - The radius of the circle. Must be non-negative.
+   * @returns The area as `π * radius²`.
+   * @throws {RangeError} If `radius` is negative.
+   *
+   * @example
+   * ```ts
+   * circleArea(1); // → 3.14159…
+   * ```
+   */
+  export function circleArea(radius: number): number {
+    if (radius < 0) throw new RangeError("radius must be non-negative");
+    return Math.PI * radius * radius;
+  }
+  ```
+
+## Error handling
+
+- For application code, exceptions are fine (TS doesn't have checked
+  exceptions). Throw a *specific* `Error` subclass; the catch site can
+  `instanceof` it.
+- For domain code that wants explicit errors, use the `Result<T, E>`
+  pattern (see `patterns.md`) — keeps the type system honest about
+  failure modes.
+- Never throw a plain string. `throw new Error("…")` minimum;
+  `throw new MyDomainError("…", { cause: original })` better.
+- `catch` blocks: `catch (err: unknown)` — that's the default in
+  strict mode. Narrow with `instanceof Error` or your own predicates.
+
+## Async
+
+- `async`/`await` only. No raw `.then()` chains in new code.
+- `Promise.all` for parallelism; `Promise.allSettled` when failures
+  shouldn't short-circuit the others.
+- Don't forget `await` (the lint catches floating promises — keep it
+  on).
+- Don't mix sync and async in the same function signature. Pick one.
+- Top-level `await` is fine in ESM entry points; don't use it in
+  library code that may be imported by older bundlers.
+
+## Loose ends to avoid
+
+- `enum` — discriminated unions or `as const` objects are stricter,
+  tree-shake better, and don't generate runtime code that surprises
+  bundlers. Plain `enum` is acceptable for legacy interop; prefer
+  alternatives in new code.
+- `namespace` — use ES modules.
+- `// @ts-ignore` and `// @ts-expect-error` without a comment.
+  `@ts-expect-error` is preferred (it errors when no longer needed),
+  and either form must explain *why*.
+- `as` casts that aren't justified. `as unknown as T` is a code smell;
+  fix the upstream type or write a real type predicate.
+- `Function` as a type. Use a precise function type (`(x: number) =>
+  string`) or `(...args: never[]) => unknown` if truly generic.
+- `object` as a type. Use `Record<string, unknown>` or — better — a
+  specific shape.

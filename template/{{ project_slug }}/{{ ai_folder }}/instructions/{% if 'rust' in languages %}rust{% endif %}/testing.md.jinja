@@ -1,0 +1,198 @@
+# Rust testing
+
+Pair with `../general/tdd.md` (the cycle and the four pillars) and
+`../general/testing.md` (where each kind of test lives).
+
+## Test placement
+
+Rust's convention is **unit tests live inline next to the code they
+test**, integration tests live in `tests/` at the crate root.
+
+```
+crate/
+├── src/
+│   ├── lib.rs
+│   └── orders.rs        ← #[cfg(test)] mod tests { ... } at the bottom
+├── tests/
+│   ├── orders_e2e.rs    ← integration tests
+│   └── common/
+│       └── mod.rs       ← shared test helpers (note the `/mod.rs`)
+└── benches/
+    └── orders.rs        ← criterion benchmarks
+```
+
+Within this project's DDD layout:
+
+- `tests/unit/` is a convention placeholder. Rust unit tests *belong
+  inline*. The directory exists for symmetry with other languages and
+  may stay empty (the post-generation hook will prefix it `_unit/`).
+- `tests/integration/` corresponds to Rust's top-level `tests/`
+  directory — cross-module tests against real or in-memory adapters.
+- `tests/e2e/` — black-box tests through the public binary boundary.
+- `tests/performance/` — `criterion` benchmarks.
+
+## Running
+
+| What | Command (recipe) | Underlying |
+| --- | --- | --- |
+| Everything | `just rust-test` | `cargo test --all-features --all-targets` |
+| One test by name | — | `cargo test refund` |
+| One test, exact | — | `cargo test refund_when_unpaid -- --exact` |
+| With nocapture (println output) | — | `cargo test -- --nocapture` |
+| In a single thread | — | `cargo test -- --test-threads=1` |
+| One integration file | — | `cargo test --test orders_e2e` |
+| Doc tests | — | `cargo test --doc` |
+| Benches (with nightly or criterion) | — | `cargo bench` |
+
+For faster runs, install `cargo-nextest` and use `cargo nextest run`
+instead of `cargo test`.
+
+## Anatomy of a test
+
+```rust
+#[test]
+fn refund_when_paid_marks_as_refunded() {
+    // Arrange
+    let mut order = Order::placed(items(), money(100, "USD"));
+    order.mark_paid();
+
+    // Act
+    order.refund("customer requested").unwrap();
+
+    // Assert
+    assert_eq!(order.status, OrderStatus::Refunded);
+    assert!(order.refunded_at.is_some());
+}
+```
+
+- AAA layout. Blank lines between phases.
+- One state-changing call in Act.
+- One logical outcome in Assert; multiple `assert!`s checking facets
+  of it are fine.
+
+Inside `#[cfg(test)] mod tests`, `use super::*;` is the convention to
+pull the module under test into scope.
+
+## Naming
+
+`fn <unit>_<condition>_<expected>()`:
+
+- `email_normalisation_lowercases_domain`
+- `refund_when_unpaid_returns_invalid_state`
+- `paginate_returns_empty_when_offset_past_end`
+
+The `fn` is the documentation. If the name doesn't fit, the test is
+testing too many things.
+
+## Doc tests double as examples
+
+```rust
+/// Adds two numbers.
+///
+/// ```
+/// # use mycrate::add;
+/// assert_eq!(add(2, 2), 4);
+/// ```
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+```
+
+Doc tests run with `cargo test --doc`. They're *the* way to make
+documentation examples stay correct over time.
+
+## Property-based testing with `proptest`
+
+```rust
+use proptest::prelude::*;
+
+proptest! {
+    #[test]
+    fn money_addition_is_commutative(a in 0u64..1_000_000, b in 0u64..1_000_000) {
+        let m1 = Money::usd_cents(a);
+        let m2 = Money::usd_cents(b);
+        prop_assert_eq!(m1 + m2, m2 + m1);
+    }
+}
+```
+
+Use on value objects, parsers, and pure functions in `domain/`. Install
+via `cargo add --dev proptest`.
+
+`quickcheck` is the alternative; `proptest` has nicer shrinking, prefer
+it.
+
+## Snapshot testing with `insta`
+
+For complex output (rendered text, formatted structs, JSON), `insta`
+diffs against an on-disk snapshot. `cargo insta review` to update
+intentionally.
+
+## Benchmarking with `criterion`
+
+```rust
+// benches/orders.rs
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+
+fn bench_summarise(c: &mut Criterion) {
+    let orders = fixtures::sample_orders(1000);
+    c.bench_function("summarise 1000 orders", |b| {
+        b.iter(|| summarise(black_box(&orders)))
+    });
+}
+
+criterion_group!(benches, bench_summarise);
+criterion_main!(benches);
+```
+
+`cargo bench` runs them. Criterion produces statistical confidence
+intervals and detects regressions.
+
+## Mocking — classical school
+
+Same rule as the rest of the codebase: **mock only out-of-process
+dependencies**. In Rust, this usually means:
+
+- For in-process collaborators: parameterise on a trait and pass a
+  hand-written in-memory implementation in tests.
+- For HTTP/DB/etc.: `wiremock`, `testcontainers` (real container),
+  or `mockall` (if you must — but the trait-and-fake approach is
+  almost always cleaner).
+
+```rust
+struct InMemoryOrderRepo { orders: RefCell<HashMap<OrderId, Order>> }
+
+impl OrderRepository for InMemoryOrderRepo {
+    fn get(&self, id: OrderId) -> Option<Order> {
+        self.orders.borrow().get(&id).cloned()
+    }
+    fn save(&self, order: Order) { self.orders.borrow_mut().insert(order.id, order); }
+}
+```
+
+## What to test
+
+| Layer | Coverage style |
+| --- | --- |
+| `domain` | High. Every invariant, every edge case. Pure functions love unit tests. |
+| `application` | Integration tests against in-memory adapters. |
+| `infrastructure` | Integration tests against a real instance via `testcontainers`. |
+| `presentation` | Small set of e2e tests through the public CLI/HTTP boundary. |
+
+## What NOT to test
+
+- Trivial getters with no logic.
+- Third-party crate behaviour (test your usage of it, not the crate).
+- Implementation details that would force the test to change every
+  refactor (private functions, internal struct fields).
+
+## TDD with cargo
+
+The full TDD ritual (mirrors `../general/tdd.md`):
+
+1. `cargo test refund_when_unpaid -- --exact` — red.
+2. Write the simplest implementation that turns it green.
+3. `cargo test` (whole suite) — green everywhere.
+4. Refactor with the suite as the safety net.
+5. Commit.
+
+Use `cargo watch -x test` (install `cargo-watch` once) to rerun on
+every save during the cycle.

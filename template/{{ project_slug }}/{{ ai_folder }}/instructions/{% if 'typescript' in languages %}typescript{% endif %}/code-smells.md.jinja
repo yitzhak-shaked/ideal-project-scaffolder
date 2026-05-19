@@ -1,0 +1,204 @@
+# TypeScript code smells
+
+Anti-patterns we refactor against. Each entry: the smell, why it
+hurts, the cure.
+
+## `any` anywhere
+
+**Smell.** `function foo(x: any): any` or `x as any` casts.
+
+**Why.** `any` is contagious. Every operation on it is unchecked.
+You've reintroduced JavaScript.
+
+**Cure.** `unknown` and narrow. For untrusted input, schema-validate
+(`zod`/`valibot`). For library types you can't model, `unknown` + a
+type predicate. The lint catches `any`; never suppress.
+
+## Bag of optionals
+
+**Smell.**
+
+```ts
+type Order = {
+  status: string;
+  paidAt?: Date;
+  shippedAt?: Date;
+  refundReason?: string;
+};
+```
+
+**Why.** Illegal states are representable. `{ status: "placed",
+shippedAt: today }` compiles.
+
+**Cure.** Discriminated union (`design.md`). Each variant carries
+only the fields it can have.
+
+## Stringly-typed status
+
+**Smell.** `if (order.status === "paid")` — string comparison
+everywhere.
+
+**Why.** Typos compile. Renaming a status doesn't propagate. Adding a
+status doesn't fail any switch.
+
+**Cure.** Discriminated union. Or `as const` array → literal-typed
+union: `type Status = typeof STATUSES[number]`.
+
+## Primitive obsession
+
+**Smell.** `function charge(userId: string, orderId: string, amount:
+number)` — every domain id is a string, every money amount a number.
+
+**Why.** Argument swap → silent bug. The compiler can't help.
+
+**Cure.** Branded types. `UserId`, `OrderId`, `MoneyUSD`. See
+`patterns.md`.
+
+## Deep optional-chain pyramids
+
+**Smell.** `user?.address?.city?.postalCode?.toUpperCase()`.
+
+**Why.** Hides that the data model is wrong: too many things may not
+exist. Each `?.` is a guard the design should have eliminated.
+
+**Cure.** Make required fields actually required. Where absence is
+legitimate, model it with a discriminated union (`{ kind: "anonymous"
+}` vs `{ kind: "registered", profile: Profile }`) so the type system
+shows the two cases.
+
+## `// @ts-ignore` without explanation
+
+**Smell.** A `@ts-ignore` (or `@ts-expect-error`) with no comment.
+
+**Why.** The next maintainer can't tell whether the silence is still
+needed.
+
+**Cure.** Prefer `@ts-expect-error` (errors when no longer needed).
+Always add a comment explaining what TypeScript objected to and why
+suppressing is safe.
+
+## `as` casts that paper over type problems
+
+**Smell.** `value as unknown as TargetType`, or repeated `x as Foo`.
+
+**Why.** You've told the compiler "trust me" without doing the work
+to make the type actually correct. The runtime can still surprise you.
+
+**Cure.** Fix the upstream type. Write a type predicate
+(`function isFoo(x: unknown): x is Foo`). Validate at the boundary
+with a schema. Only cast as a last resort, with a comment.
+
+## God class / catch-all "Service"
+
+**Smell.** `class UserService` with `createUser`, `getUser`,
+`updateUser`, `deleteUser`, `authenticateUser`, `sendUserEmail`,
+`exportUserCsv`…
+
+**Why.** Single Responsibility violated; tests need everything; new
+methods land here by gravity.
+
+**Cure.** Split by responsibility named after what the type *owns*:
+`UserRepository`, `UserAuthenticator`, `UserExporter`. (See
+`general/ddd.md`.)
+
+## Floating promises
+
+**Smell.** `doAsync();` with no `await`, in a path that needs the
+result or its errors.
+
+**Why.** Rejections become unhandled. Order of effects becomes
+unpredictable.
+
+**Cure.** Always `await` (or explicitly `void` with a comment if
+fire-and-forget is intended). Keep the
+`no-floating-promises` lint enabled.
+
+## `Promise<void>` chains using `.then`
+
+**Smell.** `fetch(url).then(r => r.json()).then(data => …)`.
+
+**Why.** Loss of stack traces, harder error handling, mixes badly
+with `try/catch` and ES module top-level await.
+
+**Cure.** `async`/`await`. Multi-step transformations become linear.
+
+## Wide `catch` blocks
+
+**Smell.** `try { ... } catch (e) { console.error(e); }` or
+`} catch { /* swallow */ }`.
+
+**Why.** Real bugs get logged-and-forgotten. The user sees a partial
+state.
+
+**Cure.** Catch specifically. Narrow on `instanceof Error` or a
+custom error class. Either handle (with a documented recovery) or
+rethrow.
+
+## `enum` with no good reason
+
+**Smell.** `enum Status { Placed, Paid, Shipped }` for runtime
+identifiers.
+
+**Why.** Plain `enum`s generate runtime code that confuses bundlers
+and breaks tree-shaking. Numeric enums are also assignable to numbers
+(silent bug surface).
+
+**Cure.** `const Status = { ... } as const` plus `type Status =
+typeof Status[keyof typeof Status]`. Or a discriminated union if the
+"enum" values carry data.
+
+## Boolean parameters that flip behavior
+
+**Smell.** `function process(data, save: boolean, retry: boolean, fast:
+boolean)`.
+
+**Why.** Each flag doubles the combinatoric test surface. The function
+now does several jobs.
+
+**Cure.** Policy pattern (`patterns.md`) or split into separate
+functions with descriptive names.
+
+## Mutable arrays where readonly would do
+
+**Smell.** `function summarise(orders: Order[]): Summary` when the
+function only reads.
+
+**Why.** Callers must defensively copy. Mutation of `orders` is
+syntactically possible inside `summarise`.
+
+**Cure.** `readonly Order[]`. Callers can still pass mutable arrays;
+the function declares its non-mutation.
+
+## `JSON.parse` straight into typed code
+
+**Smell.** `const order: Order = JSON.parse(req.body);`.
+
+**Why.** The cast is a lie. The runtime value is whatever the network
+sent; the type says it's an `Order`.
+
+**Cure.** Schema-validate at the boundary (`zod`, `valibot`,
+`arktype`). The validator returns a typed value or a Result.
+
+## Singletons via module-level mutable state
+
+**Smell.** `let cache = new Map<string, Value>();` at the top of a
+module.
+
+**Why.** Hidden coupling. Tests interfere with each other. No way to
+swap the implementation.
+
+**Cure.** Make it an object the composition root constructs and
+injects. The module exports a class or factory; the singleton (if
+genuinely needed) lives at the entry point.
+
+## React-flavoured (if applicable)
+
+- **Deeply prop-drilled state** → lift to context, useReducer, or
+  external state.
+- **`useEffect` for derived data** → compute in render, or
+  `useMemo`. `useEffect` is for *side effects*, not derivations.
+- **`useEffect` with broad deps** that re-runs constantly → narrow
+  the deps, or extract the effect to a custom hook with a clean
+  interface.
+- **`any` props** because the type is hard → write the type. It
+  belongs to the component's contract.

@@ -83,3 +83,55 @@ lint:
 mcp:
     python scripts/mcp_check.py
 {% endif %}
+# --- Agent helpers ---
+# These recipes don't run code; they print the right skill and instruction
+# file paths to load. Pipe them into your agent ("paste this in chat") or
+# use them as a quick reminder of what's available.
+
+# List every project skill (one-liner descriptions).
+skills:
+    @echo "Project skills (load via: read {{ ai_folder }}/skills/<name>/SKILL.md):"
+    @ls -1 {{ ai_folder }}/skills | sed 's/^/  /'
+
+# List every project subagent.
+agents:
+    @echo "Project subagents (load via: read {{ ai_folder }}/agents/<name>.md):"
+    @ls -1 {{ ai_folder }}/agents | grep -v README | sed 's/^/  /'
+
+# Print the instruction files you should load for a given language.
+# Usage:  just convention python    just convention rust    just convention general
+convention LANG="general":
+    @if [ -d "{{ ai_folder }}/instructions/{{ '{{LANG}}' }}" ]; then \
+        echo "Load these files for {{ '{{LANG}}' }}:" ; \
+        find {{ ai_folder }}/instructions/{{ '{{LANG}}' }} -name '*.md' | sed 's/^/  /' ; \
+    else \
+        echo "No instruction folder at {{ ai_folder }}/instructions/{{ '{{LANG}}' }}" ; \
+        echo "Available: " ; \
+        ls -1 {{ ai_folder }}/instructions ; \
+    fi
+
+# Print the design-review checklist for a file.
+# Usage:  just review-design src/domain/order.py
+review-design FILE:
+    @echo "To review {{ '{{FILE}}' }}, load this skill and apply it to the file:"
+    @echo "  {{ ai_folder }}/skills/design-review/SKILL.md"
+    @echo ""
+    @echo "Then read the file:"
+    @echo "  {{ '{{FILE}}' }}"
+
+# Print the TDD-cycle skill for an upcoming change.
+# Usage:  just tdd "add refund-when-unpaid validation"
+tdd DESCRIPTION:
+    @echo "Drive '{{ '{{DESCRIPTION}}' }}' through the TDD cycle:"
+    @echo "  1. Load {{ ai_folder }}/skills/tdd-cycle/SKILL.md"
+    @echo "  2. Build a test list for the change."
+    @echo "  3. Red → Green → Refactor, one item at a time."
+
+# Print the refactor-code-smell skill for a file.
+# Usage:  just refactor src/domain/order.py
+refactor FILE:
+    @echo "To refactor {{ '{{FILE}}' }}, load this skill and apply it:"
+    @echo "  {{ ai_folder }}/skills/refactor-code-smell/SKILL.md"
+    @echo ""
+    @echo "Then read the file:"
+    @echo "  {{ '{{FILE}}' }}"

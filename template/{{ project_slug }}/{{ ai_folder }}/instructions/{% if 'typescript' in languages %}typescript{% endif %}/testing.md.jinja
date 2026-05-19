@@ -1,0 +1,228 @@
+# TypeScript testing
+
+Pair with `../general/tdd.md` (the cycle and the four pillars) and
+`../general/testing.md` (where each kind of test lives).
+
+## Runner: Vitest
+
+[Vitest](https://vitest.dev/) is the default test runner — Vite-native,
+TS-first, Jest-compatible API.
+
+```sh
+npm test                    # run once
+npm run test:watch          # watch mode (TDD loop)
+npm test -- order           # filter by name
+npm test -- --coverage      # with coverage
+```
+
+If the project uses Jest instead, the API is mostly identical
+(`describe`, `it`, `expect`); the rest of this document applies the
+same.
+
+## Test layout
+
+```
+src/
+├── domain/
+│   ├── order.ts
+│   └── order.test.ts        ← co-located unit test
+└── application/
+    └── placeOrder.ts
+tests/
+├── integration/
+│   └── orders.api.test.ts   ← cross-module + real adapters
+└── e2e/
+    └── checkout.test.ts     ← through the public HTTP/CLI boundary
+```
+
+- **Unit tests live next to source files** (`*.test.ts` /
+  `*.spec.ts`). Co-location keeps related code visible.
+- `tests/integration/` and `tests/e2e/` for tests that exercise
+  multiple modules or hit real I/O.
+
+Configure include patterns in `vitest.config.ts` accordingly.
+
+## Anatomy of a test
+
+```ts
+import { describe, it, expect } from "vitest";
+
+describe("Order.refund", () => {
+  it("marks a paid order as refunded", () => {
+    // Arrange
+    const order = Order.placed(items, money(100, "USD"));
+    order.markPaid();
+
+    // Act
+    order.refund("customer requested");
+
+    // Assert
+    expect(order.status).toBe("refunded");
+    expect(order.refundedAt).toBeInstanceOf(Date);
+  });
+});
+```
+
+- Three phases — Arrange / Act / Assert — separated by blank lines.
+- One state-changing call in Act.
+- One logical outcome in Assert; multiple `expect`s checking facets
+  of it are fine.
+
+## Naming
+
+`it("<does what> when <condition>")` — read it as a sentence:
+
+- `it("normalises an email to lowercase")`
+- `it("rejects a refund when the order is unpaid")`
+- `it("returns an empty page when offset is past the end")`
+
+`describe` blocks group by unit under test, not by category. Nest
+sparingly; one or two levels.
+
+## Fixtures and factories
+
+Vitest doesn't have pytest-style fixtures; use plain functions.
+
+```ts
+function aPaidOrder(): Order {
+  const o = Order.placed(items(), money(50, "USD"));
+  o.markPaid();
+  return o;
+}
+```
+
+- Factories take optional overrides for variations:
+  `aPaidOrder({ total: money(1000, "USD") })`.
+- For setup/teardown, use `beforeEach` / `afterEach` (Vitest's
+  Jest-compatible hooks).
+
+## Parametrize
+
+Vitest's `it.each`:
+
+```ts
+it.each([
+  [0,   "USD", true],
+  [10,  "USD", true],
+  [-1,  "USD", false],
+  [10,  "usd", false],
+  [10,  "XX",  false],
+])("money(%i, %s) valid? %s", (amount, currency, valid) => {
+  if (valid) expect(() => money(amount, currency)).not.toThrow();
+  else       expect(() => money(amount, currency)).toThrow();
+});
+```
+
+Reach for `it.each` before reaching for property-based testing.
+
+## Property-based testing with fast-check
+
+```ts
+import { fc, it } from "@fast-check/vitest";
+
+it.prop([fc.integer({ min: 0, max: 1_000_000 }), fc.integer({ min: 0, max: 1_000_000 })])(
+  "money addition is commutative",
+  (a, b) => {
+    const m1 = moneyUsd(a);
+    const m2 = moneyUsd(b);
+    expect(m1.add(m2)).toEqual(m2.add(m1));
+  },
+);
+```
+
+`fast-check` finds edge cases you wouldn't enumerate (zero, max,
+weird precision). Install: `npm i -D @fast-check/vitest fast-check`.
+
+Use on: value-object constructors, parsers, encoder/decoder pairs,
+pure transformations in `domain/`.
+
+## Mocking — classical school, sparingly
+
+Same rule as the rest of the codebase: **mock only out-of-process
+dependencies**.
+
+- For in-process collaborators: pass a real or hand-rolled
+  in-memory implementation of the interface. Don't mock.
+- For HTTP / DB / queue / clock / filesystem: mock or use a fake.
+
+```ts
+class InMemoryOrderRepository implements OrderRepository {
+  private readonly orders = new Map<OrderId, Order>();
+  async get(id: OrderId): Promise<Order | undefined> { return this.orders.get(id); }
+  async save(o: Order): Promise<void> { this.orders.set(o.id, o); }
+}
+
+it("place_order persists the order", async () => {
+  const repo = new InMemoryOrderRepository();
+  const useCase = new PlaceOrderUseCase(repo, fixedClock(new Date("2026-01-01")));
+
+  const id = await useCase.execute(aPlaceOrderCommand());
+
+  expect(await repo.get(id)).toBeDefined();
+});
+```
+
+For HTTP, prefer [MSW](https://mswjs.io/) (request-level mock) over
+`vi.spyOn(fetch)`.
+
+For time, inject a `Clock` interface and use a `FakeClock` in tests;
+don't rely on Vitest's `vi.useFakeTimers` for domain logic — it leaks
+global state.
+
+## Snapshots — sparingly
+
+Snapshot tests (`toMatchSnapshot()`, `toMatchInlineSnapshot()`) are
+good for complex stable outputs and dangerous when overused (every
+small change becomes a snapshot update treadmill).
+
+Rule of thumb: snapshot the *shape* you can't easily assert
+field-by-field. Don't snapshot rendered HTML you haven't read.
+
+## What to test
+
+| Layer | Coverage style |
+| --- | --- |
+| `domain` | High. Every invariant, edge case, error. Pure → loves unit tests. |
+| `application` | Integration tests against in-memory adapters. |
+| `infrastructure` | Integration tests against the real external system in a container, or MSW for HTTP. |
+| `presentation` | Small set of e2e tests through the public HTTP/CLI boundary (Playwright for browser apps). |
+
+## What NOT to test
+
+- Trivial property reads with no logic.
+- Type-only constructs (`type X = ...`). The compiler tests them.
+- Implementation details — `expect(privateHelper).toHaveBeenCalled()`
+  is a refactor magnet.
+- Third-party library internals — test *your usage*.
+
+## TDD with Vitest
+
+The full ritual (mirrors `../general/tdd.md`):
+
+1. `npm run test:watch` — Vitest is now watching.
+2. Write a failing test. Red. Confirm it fails for the right reason.
+3. Write the simplest implementation that turns it green.
+4. Refactor with the test as safety net.
+5. Commit.
+6. Update the test list. Repeat.
+
+`npm run test:watch -- --changed` reruns only the tests whose source
+files changed — great for tight TDD loops in large codebases.
+
+## E2E with Playwright (when applicable)
+
+For browser e2e:
+
+```ts
+import { test, expect } from "@playwright/test";
+
+test("user can place an order", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("[name=email]", "alice@example.com");
+  await page.click("button:has-text('Sign in')");
+  await expect(page).toHaveURL(/dashboard/);
+});
+```
+
+Keep e2e small in number; rely on lower layers for coverage. Each
+e2e test costs minutes of CI; don't repeat unit-test work there.

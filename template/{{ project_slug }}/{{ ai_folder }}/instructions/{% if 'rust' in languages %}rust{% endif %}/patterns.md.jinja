@@ -1,0 +1,198 @@
+# Rust patterns
+
+Recipes that show up repeatedly. Pair with `design.md` (the principles)
+and `code-smells.md` (what each pattern fixes). The canonical catalogue
+is the community
+[Rust Design Patterns](https://rust-unofficial.github.io/patterns/)
+book — read it before inventing your own.
+
+## Newtype
+
+Wrap a primitive in a `struct` that's a different type. Free at runtime,
+priceless at compile time.
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct UserId(u64);
+
+impl UserId {
+    pub fn new(raw: u64) -> Self { Self(raw) }
+    pub fn as_u64(self) -> u64 { self.0 }
+}
+
+// Now `fn charge(order: OrderId, customer: UserId)` cannot have its
+// arguments accidentally swapped.
+```
+
+Use newtypes for: IDs, money amounts, percentages, durations measured in
+specific units, anything domain-meaningful.
+
+For domain value objects with invariants, validate in the constructor:
+
+```rust
+pub struct Email(String);
+
+impl Email {
+    pub fn parse(s: &str) -> Result<Self, EmailError> {
+        if !s.contains('@') { return Err(EmailError::Malformed); }
+        Ok(Self(s.to_owned()))
+    }
+    pub fn as_str(&self) -> &str { &self.0 }
+}
+```
+
+A constructed `Email` is guaranteed valid.
+
+## Builder
+
+For structs with many configuration knobs.
+
+```rust
+pub struct HttpClient { /* … */ }
+
+pub struct HttpClientBuilder {
+    timeout: Option<Duration>,
+    retries: u32,
+    base_url: Option<Url>,
+}
+
+impl HttpClientBuilder {
+    pub fn new() -> Self { Self::default() }
+    pub fn timeout(mut self, d: Duration) -> Self { self.timeout = Some(d); self }
+    pub fn retries(mut self, n: u32) -> Self { self.retries = n; self }
+    pub fn base_url(mut self, u: Url) -> Self { self.base_url = Some(u); self }
+    pub fn build(self) -> Result<HttpClient, BuildError> { /* validate, construct */ }
+}
+```
+
+Pair with **type-state** when invariants matter — e.g.
+`HttpClientBuilder<MissingUrl>` → `HttpClientBuilder<HasUrl>` so
+`.build()` only exists when required fields are present.
+
+## RAII guards
+
+Tie cleanup to a value's lifetime. The destructor runs even on panic.
+
+```rust
+pub struct MutexGuard<'a, T> { /* … */ }
+impl<'a, T> Drop for MutexGuard<'a, T> {
+    fn drop(&mut self) { /* release the lock */ }
+}
+```
+
+Use for: locks, transaction commits/rollbacks, file handles, timers,
+spans/instrumentation. If you find yourself writing `try`/`finally`
+patterns by hand, you want an RAII guard.
+
+## Strategy via enum dispatch
+
+When you have a small, closed set of strategies, prefer an enum to a
+trait object.
+
+```rust
+enum Compression {
+    None,
+    Gzip { level: u32 },
+    Zstd { level: i32 },
+}
+
+impl Compression {
+    pub fn compress(&self, input: &[u8]) -> Vec<u8> {
+        match self {
+            Compression::None => input.to_vec(),
+            Compression::Gzip { level } => gzip(input, *level),
+            Compression::Zstd { level } => zstd(input, *level),
+        }
+    }
+}
+```
+
+When the set is open or implementations live in many crates, reach for
+`Box<dyn Trait>` instead.
+
+## Visitor / sealed trait
+
+When a trait is meant to be implemented only inside your crate (so you
+can add methods without breaking downstream), use the sealed-trait
+pattern:
+
+```rust
+pub trait Renderer: private::Sealed {
+    fn render(&self, doc: &Document) -> String;
+}
+
+mod private { pub trait Sealed {} }
+```
+
+## Result chains and `?`
+
+Chain failable operations linearly. `?` lifts compatible errors
+automatically when `From` is implemented.
+
+```rust
+fn process(path: &Path) -> Result<Summary, Error> {
+    let text = std::fs::read_to_string(path)?;       // io::Error -> Error
+    let doc = parse(&text)?;                         // ParseError -> Error
+    let summary = summarise(&doc)?;
+    Ok(summary)
+}
+```
+
+Avoid building error states "by hand" with `.map_err(|e| ...)` unless
+you genuinely need to translate.
+
+## `From`/`Into` for ergonomic constructors
+
+```rust
+impl From<&str> for ProjectName { fn from(s: &str) -> Self { /* … */ } }
+```
+
+Callers can `let name: ProjectName = "foo".into();` — and `?` benefits
+when `From` is implemented for error conversions.
+
+## Iterator adapters
+
+Express data transformations as chained adapters. Skip the temporary
+`Vec`s.
+
+```rust
+let total: u64 = orders.iter()
+    .filter(|o| o.is_paid())
+    .map(|o| o.total_cents)
+    .sum();
+```
+
+For accumulator logic that doesn't map to existing combinators, use
+`fold`.
+
+## `Cow` for borrow-or-own
+
+When most callers can pass a borrowed slice but the function occasionally
+needs to allocate (e.g. to normalise):
+
+```rust
+fn normalise(s: &str) -> Cow<'_, str> {
+    if s.chars().all(|c| c.is_lowercase()) {
+        Cow::Borrowed(s)
+    } else {
+        Cow::Owned(s.to_lowercase())
+    }
+}
+```
+
+## Composition root
+
+A single function (usually `main` or a `bootstrap` module) wires the
+concrete types into the generic application code.
+
+```rust
+fn main() -> anyhow::Result<()> {
+    let cfg = Config::from_env()?;
+    let repo = SqlxOrderRepo::connect(&cfg.db)?;     // concrete
+    let app = App::new(repo);                        // generic over R: OrderRepository
+    app.run()
+}
+```
+
+No other module decides "which database" — they only declare what they
+need (a trait bound).

@@ -1,0 +1,114 @@
+# Coding conventions — general
+
+Language-agnostic style and idioms for this project. Per-language conventions
+live in sibling folders (e.g. `instructions/python/`); load those *in addition*
+to this file when you're working in that language.
+
+## Naming
+
+- Names describe **intent**, not implementation. `parsed_user_input`, not
+  `tmp_str`. `is_eligible_for_refund`, not `check_user`.
+- A name's length should be proportional to its scope. Loop indices can be
+  `i`; module-level constants must be unambiguous.
+- Negative names breed double-negation bugs. Prefer `is_ready` over
+  `is_not_ready`.
+
+## Functions
+
+- One function, one job. If you need "and" to describe it, split it.
+- Prefer pure functions in `src/domain/`. Side effects belong in
+  `src/infrastructure/` or `src/application/`.
+- Early returns / guard clauses over nested conditionals.
+- Avoid boolean parameters that flip behaviour — split the function or use
+  a policy/strategy object instead. See `general/ddd.md` and
+  `python/patterns.md` for the policy pattern.
+- Keep argument lists short. Beyond ~4 parameters, group them into a
+  cohesive context object.
+
+## Errors
+
+- Errors are **returned**, not thrown, in domain/application layers (where
+  the language supports it). The presentation layer translates to
+  exceptions / HTTP responses / exit codes.
+- Never swallow errors silently. `except Exception: pass`,
+  `catch (_) {}`, `let _ = ...` are all forbidden unless paired with an
+  explicit comment justifying it.
+- Fail fast at the boundary: validate inputs the moment they enter the
+  system, then propagate already-validated types inward.
+- No silent fallbacks. If a value is required and missing, fail loudly.
+
+## Comments
+
+- Comments explain **why**, never **what**. Delete any comment that
+  restates the code.
+- Public APIs get doc comments with at least one usage example.
+- TODO/FIXME comments must include an owner and either a date or a ticket
+  reference. Anonymous TODOs become permanent.
+
+## Magic values
+
+- Replace literal numbers/strings used for branching with named constants
+  or enums. The name is the documentation.
+
+## Dependencies and coupling
+
+- Respect the Law of Demeter: a function should talk only to its direct
+  collaborators, not reach through them.
+- Prefer dependency injection over creating dependencies inside the object
+  that uses them. Separation of creation from use is non-negotiable in
+  this codebase. See `general/architecture.md` for the composition root.
+- Avoid global mutable state. Module-level constants are fine; module-level
+  caches and singletons should be reviewed case-by-case.
+
+{% if 'rust' in languages %}
+## Rust
+
+- Edition 2021+. Use `rustfmt` defaults (no custom `rustfmt.toml` unless
+  there's a specific reason).
+- Clippy must be clean: `cargo clippy --all-targets --all-features -- -D warnings`.
+- Prefer `Result<T, E>` over `panic!`. Use `thiserror` for library errors,
+  `anyhow` only at binary boundaries.
+- Public APIs get doc comments. Use `///` with examples that compile.
+- No `unsafe` without an accompanying `// SAFETY:` justification.
+{% endif %}
+{% if 'cpp' in languages %}
+## C/C++
+
+- C++20 minimum. Compile with `-Wall -Wextra -Wpedantic -Werror`.
+- RAII for all resources. No raw `new`/`delete` outside of resource-managing classes.
+- Use `std::span`, `std::string_view`, `std::optional` over raw pointers and
+  sentinel values.
+- Headers: include-what-you-use. One class per header where it makes sense.
+- Format with `clang-format` (config in repo root); lint with `clang-tidy`.
+{% endif %}
+{% if 'typescript' in languages %}
+## TypeScript / Node
+
+- TS strict mode (`"strict": true`, `"noUncheckedIndexedAccess": true`).
+- No `any`. Use `unknown` and narrow.
+- Prefer named exports. Default exports only for framework conventions that
+  require them (e.g. Next.js pages).
+- ESLint + Prettier. Run via `npm run lint`.
+- Async: `async`/`await`, never raw `.then()` chains.
+{% endif %}
+{% if 'python' in languages %}
+## Python
+
+Python has its own dedicated instruction set — load these in addition to
+the rules above when working in Python:
+
+- `@{{ ai_folder }}/instructions/python/zen.md` — PEP 20 (Zen of Python).
+- `@{{ ai_folder }}/instructions/python/style.md` — formatting, naming, type hints, docstrings.
+- `@{{ ai_folder }}/instructions/python/tooling.md` — `uv`, `ruff`, `mypy`, `pytest`.
+- `@{{ ai_folder }}/instructions/python/design.md` — composition, DI, protocols, properties vs methods.
+- `@{{ ai_folder }}/instructions/python/patterns.md` — value objects, policy, context object, unit of work.
+- `@{{ ai_folder }}/instructions/python/code-smells.md` — the smell taxonomy to refactor against.
+- `@{{ ai_folder }}/instructions/python/testing.md` — pytest, hypothesis, mutation testing, classical school.
+{% endif %}
+
+## Layering and design
+
+- `general/architecture.md` — DDD layering rules (what may import from where).
+- `general/ddd.md` — tactical and strategic DDD (aggregates, value objects,
+  repositories, ubiquitous language).
+- `general/tdd.md` — test-driven development workflow.

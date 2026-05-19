@@ -1,0 +1,139 @@
+# Test-Driven Development
+
+Micro-implementation in this project is **test-driven**. The goal isn't
+coverage as a metric — it's using the test as a design tool. If you can't
+write the test first, you don't yet understand the change well enough to
+write the code.
+
+Canonical references: Kent Beck, *Test-Driven Development: By Example*;
+Vladimir Khorikov, *Unit Testing: Principles, Practices, and Patterns*.
+
+## The cycle
+
+**Red → Green → Refactor.** Repeated tightly, in minutes per loop.
+
+1. **Red.** Write the smallest failing test that captures one behaviour
+   you don't yet have. Run it. Confirm it fails *for the reason you
+   expect* (not because of a typo or missing import).
+2. **Green.** Write the *simplest* code that makes the test pass. "Sins"
+   are allowed here — hardcoded return values, copy-pasted branches.
+   Speed and correctness, nothing else.
+3. **Refactor.** With the green test as a safety net, clean up. Remove
+   duplication. Rename. Extract. Run the test after every small change.
+4. Goto 1.
+
+Each loop should take minutes, not hours. If you've been red for more
+than ~10 minutes, the step is too big — back out, pick something smaller.
+
+## Canon TDD (Beck)
+
+The full disciplined flow Beck describes:
+
+1. Write a **test list** for the change you're about to make. One line
+   per behaviour you can think of.
+2. Pick one item — usually the simplest, occasionally the most central.
+3. Make it pass.
+4. Refactor.
+5. Update the list (new items learned, items now obvious).
+6. Repeat until the list is empty.
+
+The test list is the design document. Keep it visible.
+
+## What makes a test valuable (Khorikov's four pillars)
+
+Every test pays four kinds of rent. Optimise for all four; never trade
+one to zero.
+
+1. **Protection against regressions.** Will this test catch a real bug
+   if the production code breaks?
+2. **Resistance to refactoring.** Can the implementation be cleaned up
+   without rewriting the test? Tests that bind to *how* the code does
+   its job (private method calls, internal state) fail this — they
+   become an anchor that punishes good refactors.
+3. **Fast feedback.** Milliseconds, not seconds. A test suite that takes
+   ten minutes is one nobody runs.
+4. **Maintainability.** Is the test cheap to read and cheap to change
+   when requirements legitimately change? Tests are code; they age.
+
+Coverage is **not** a pillar. 100% coverage with weak assertions is
+worse than 70% coverage with strong ones.
+
+## Test behaviour, not implementation
+
+- Test the *observable outcome* of a function: return value, state change
+  through a public API, message sent to a collaborator the caller knows
+  about. Not which private method was called or which intermediate
+  variable existed.
+- A good rule of thumb: if a refactor that doesn't change behaviour
+  breaks your test, the test is binding to implementation.
+
+## Classical school > London school (mockist)
+
+This codebase follows the **classical** (Detroit / Chicago) school:
+
+- Mock **only** out-of-process dependencies — databases, HTTP clients,
+  message queues, the filesystem, the clock.
+- For in-process collaborators, use the real implementation. They're fast,
+  they're deterministic, they exercise the real interaction.
+- A test that spends 30 lines wiring up mocks is a sign the code under
+  test is too tightly coupled — fix the design, not the test.
+
+## Test anatomy (Arrange / Act / Assert)
+
+Every test has three phases, separated by blank lines:
+
+```python
+def test_refunds_a_paid_order():
+    # Arrange
+    order = Order.placed(items=[item], total=Money(100, "USD"))
+    order.mark_paid()
+
+    # Act
+    order.refund()
+
+    # Assert
+    assert order.status is OrderStatus.REFUNDED
+```
+
+- **Arrange.** Put the world into the precondition of the test.
+- **Act.** *One* state-changing call. If you need two, it's two tests.
+- **Assert.** One logical outcome. Multiple `assert` lines that all check
+  facets of that outcome are fine; checking two unrelated outcomes is not.
+
+## Naming
+
+Test names are documentation. Use a pattern that reads like a sentence:
+
+- `test_<unit>_<condition>_<expected_result>`
+- `test_refund_when_order_is_unpaid_raises`
+- `test_email_normalisation_lowercases_domain`
+
+If you can't name a test concisely, the test is checking too many things.
+
+## When NOT to write the test first
+
+- **Spikes / exploratory prototypes** that you will delete. Write to
+  learn, then delete. Then start fresh with TDD.
+- **Trivial accessors and DTOs** with no logic. Don't test setters.
+- **Third-party library behaviour.** Test your *usage* of the library
+  (your adapter), not the library itself.
+
+## When a bug is reported
+
+The bug is the test you missed. Before fixing:
+
+1. Write a failing test that reproduces the bug.
+2. Confirm it fails.
+3. Fix the code.
+4. Confirm the test passes.
+5. Add the test to the suite forever.
+
+## Language-specific TDD details
+
+{% if 'python' in languages %}- Python: `@{{ ai_folder }}/instructions/python/testing.md`
+  ({{ '`uv run pytest`' }}, fixtures, parametrize, hypothesis, mutation testing).
+{% endif %}{% if 'rust' in languages %}- Rust: `cargo test`, inline `#[cfg(test)] mod tests` blocks, `proptest`
+  for property-based testing.
+{% endif %}{% if 'typescript' in languages %}- TypeScript: Vitest or Jest, `fast-check` for property-based testing.
+{% endif %}{% if 'cpp' in languages %}- C/C++: GoogleTest or Catch2, `rapidcheck` for property-based testing.
+{% endif %}

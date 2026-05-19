@@ -1,0 +1,74 @@
+# Rust tooling
+
+This project uses `cargo` — the universal Rust tool — for builds,
+tests, dependencies, formatting, and lints. Run everything through
+the `Justfile` recipes; never invoke a Rust toolchain directly with
+flags that diverge from the recipes.
+
+## The commands you need
+
+| Action | Recipe | Underlying command |
+| --- | --- | --- |
+| Build (debug) | `just rust-build` | `cargo build` |
+| Build (release) | — | `cargo build --release` |
+| Run | — | `cargo run -- <args>` |
+| Test | `just rust-test` | `cargo test --all-features --all-targets` |
+| Format | `just rust-fmt` | `cargo fmt --all` |
+| Lint | `just rust-lint` | `cargo clippy --all-targets --all-features -- -D warnings` |
+| Add a dep | — | `cargo add <crate>` |
+| Add a dev-dep | — | `cargo add --dev <crate>` |
+| Add a build-dep | — | `cargo add --build <crate>` |
+| Remove | — | `cargo remove <crate>` |
+| Update | — | `cargo update` (or `cargo update -p <crate>`) |
+| Doc | — | `cargo doc --no-deps --open` |
+| Audit | — | `cargo audit` (install once: `cargo install cargo-audit`) |
+
+## Toolchain pinning
+
+`rust-toolchain.toml` at the repo root pins the channel:
+
+```toml
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+```
+
+CI must use the same `rust-toolchain.toml` (no separate version
+declaration) so local and CI agree on the compiler.
+
+## Cargo.toml conventions
+
+- Pin direct dependencies with `^x.y` (the cargo default) unless
+  there's a reason to be tighter. `Cargo.lock` does the transitive
+  pinning.
+- For **binaries**: commit `Cargo.lock`.
+- For **libraries**: do **not** commit `Cargo.lock` (it would override
+  downstream resolution).
+- Use feature flags for optional functionality. Default features should
+  represent the most common, lowest-friction use; opt out for
+  minimal builds.
+- Workspace layout for multi-crate projects: `Cargo.toml` at the root
+  with `[workspace]`, individual crates as members. Use
+  `[workspace.dependencies]` to pin transitively for all members.
+
+## Tools worth having
+
+| Tool | Install | Purpose |
+| --- | --- | --- |
+| `cargo-watch` | `cargo install cargo-watch` | `cargo watch -x test` for TDD loops. |
+| `cargo-audit` | `cargo install cargo-audit` | Vulnerability scan against RustSec. |
+| `cargo-nextest` | `cargo install cargo-nextest` | Faster, prettier test runner. |
+| `cargo-deny` | `cargo install cargo-deny` | License + advisory + duplicate-version gate. |
+| `cargo-machete` | `cargo install cargo-machete` | Find unused dependencies. |
+| `criterion` (dev-dep) | `cargo add --dev criterion` | Statistical benchmarking. |
+
+## Anti-patterns
+
+- ❌ Invoking `rustc` directly. Use `cargo`.
+- ❌ Hand-editing `Cargo.lock`. Let `cargo update` regenerate it.
+- ❌ `--features ...` in CI but not locally. Make the same features
+  the default in `Cargo.toml`, or document the divergence.
+- ❌ Mixing release and debug binaries in the same build cache without
+  understanding incremental compilation.
+- ❌ `cargo install` for project dependencies — that's for *binary
+  tools*. Project deps go in `Cargo.toml`.

@@ -1,0 +1,92 @@
+---
+name: refactor-code-smell
+description: Detect a code smell in existing code and refactor it against the project's smell taxonomy. ALWAYS use this skill when the user says "this is messy", "refactor this", "is this code smelly", "clean this up", points at duplicated/over-nested/overly-clever code, or asks for a code-quality review of a file. Pair with the project's smell taxonomy.
+---
+
+# Refactor a code smell
+
+Use this when you spot — or are asked to spot — code that violates the
+project's design principles.
+
+## Steps
+
+### 1. Identify the smell
+
+Match what you're looking at against the project's taxonomy:
+
+{% if 'python' in languages %}- Load `@{{ ai_folder }}/instructions/python/code-smells.md` for the full
+  Python smell list.
+- Load `@{{ ai_folder }}/instructions/python/design.md` for the
+  underlying design principles being violated.
+{% else %}- Load `@{{ ai_folder }}/instructions/general/coding-conventions.md` for
+  the language-agnostic baseline.
+{% endif %}
+
+Name the smell explicitly when you report — don't just say "this is
+bad", say "this is a God Object" or "this is Primitive Obsession".
+
+### 2. Check there's a test safety net
+
+Before refactoring, confirm the code under refactor has tests covering
+its observable behaviour. If it doesn't:
+
+1. **Stop the refactor.**
+2. Add characterisation tests first — tests that capture the *current*
+   behaviour, warts and all.
+3. Confirm they pass against the unrefactored code.
+4. *Then* refactor.
+
+Without tests, a refactor is a rewrite with extra anxiety.
+
+### 3. Plan the smallest cleanup
+
+Refactor in small steps. One commit per logical move:
+
+- Rename → run tests.
+- Extract function → run tests.
+- Replace primitive with value object → run tests.
+- Pull boolean flag out as policy → run tests.
+
+If any step goes red, undo and try smaller.
+
+### 4. Apply the cure
+
+{% if 'python' in languages %}Cross-reference the cure from `python/code-smells.md` and the recipe
+from `python/patterns.md`. Examples:
+
+- God Object → extract responsibilities into focused modules.
+- Primitive Obsession → introduce a Value Object (`patterns.md`).
+- Boolean flag parameter → Policy pattern (`patterns.md`).
+- `isinstance` chain → dispatch dictionary or polymorphism.
+- Deep nesting → guard clauses with early returns.
+- Mutable default argument → `None` default, build inside.
+{% else %}Each smell has a known cure; pick the one that matches.
+{% endif %}
+
+### 5. Confirm
+
+- All tests green.
+- Lint clean.
+- Type-check clean.
+- The smell is *gone*, not just relocated.
+
+## Boundaries — when NOT to refactor
+
+- The code is about to be deleted.
+- The change is far outside the scope of the task at hand (note it as
+  follow-up work, don't smuggle it in).
+- The "smell" is actually appropriate complexity — sometimes a long
+  function or a class with state is correct. Read the design rules
+  before declaring something smelly.
+- The DRY itch from two visually similar but conceptually distinct
+  blocks. Leave the duplication. See `python/design.md` ("If two
+  pieces of code look alike but represent different domain concepts,
+  leave the duplication").
+
+## Reporting back
+
+- The smell you found (named).
+- The cure you applied.
+- Files changed.
+- Test status (green, hopefully).
+- Anything noticed in passing but not addressed (as a follow-up list).

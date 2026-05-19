@@ -14,14 +14,49 @@
 
 ## Project conventions — read before editing
 
-Read these files in `{{ ai_folder }}/instructions/`:
+Read the files in `{{ ai_folder }}/instructions/`. They are authoritative
+— if anything in this file conflicts, they win.
 
-- `coding-conventions.md` — language style and idioms
-- `architecture.md` — DDD layering rules
-- `testing.md` — what and how to test
-- `security.md` — security posture and constraints
+**General (always):**
 
-They are authoritative — if anything here conflicts with them, they win.
+- `general/coding-conventions.md` — language-agnostic style and idioms
+- `general/architecture.md` — DDD layering rules
+- `general/ddd.md` — domain modelling
+- `general/tdd.md` — test-driven micro-implementation
+- `general/testing.md` — what / where / how to test
+- `general/security.md` — security posture
+{% if 'python' in languages %}
+**Python (when touching Python):**
+
+- `python/zen.md`, `python/style.md`, `python/tooling.md` (uv, ruff, mypy, pytest)
+- `python/design.md`, `python/patterns.md`, `python/code-smells.md`
+- `python/testing.md`
+{% endif %}{% if 'rust' in languages %}
+**Rust (when touching Rust):**
+
+- `rust/style.md`, `rust/tooling.md` (cargo, clippy, rustfmt)
+- `rust/design.md`, `rust/patterns.md`, `rust/code-smells.md`
+- `rust/testing.md`
+{% endif %}{% if 'typescript' in languages %}
+**TypeScript (when touching TS):**
+
+- `typescript/style.md`, `typescript/tooling.md` (npm/pnpm, tsc, Biome, Vitest)
+- `typescript/design.md`, `typescript/patterns.md`, `typescript/code-smells.md`
+- `typescript/testing.md`
+{% endif %}{% if 'cpp' in languages %}
+**C/C++ (when touching C/C++):**
+
+- `cpp/style.md`, `cpp/tooling.md` (CMake presets, vcpkg/Conan, sanitisers)
+- `cpp/design.md`, `cpp/patterns.md`, `cpp/code-smells.md`
+- `cpp/testing.md`
+{% endif %}
+## Working style
+
+- **Micro-implementation is test-driven** (red-green-refactor). See `general/tdd.md`.
+- **Design is DDD**: ubiquitous language, layering, pure domain. See `general/ddd.md`.
+{% if 'python' in languages %}- **Python runs through `uv`** — never `python`, `pip`, `poetry` directly.
+{% endif %}- See `{{ ai_folder }}/skills/` and `{{ ai_folder }}/agents/` for invokable
+  skills and subagents.
 
 ## Source layout
 

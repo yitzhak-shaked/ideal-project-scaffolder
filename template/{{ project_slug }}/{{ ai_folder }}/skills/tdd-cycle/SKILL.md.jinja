@@ -1,0 +1,102 @@
+---
+name: tdd-cycle
+description: Drive an implementation through a strict red-green-refactor TDD cycle. ALWAYS use this skill when the user asks to add a new feature, fix a bug from a regression report, change observable behaviour, or says anything like "write tests first", "TDD this", or "let's drive this with tests". Pair with the general/tdd.md instructions.
+---
+
+# TDD cycle
+
+Use this when you are about to change behaviour. The point isn't ritual —
+it's that the test is the design document, and writing it first proves
+you understand the change.
+
+## Steps
+
+### 0. Read the rules
+
+If you haven't this session, load `@{{ ai_folder }}/instructions/general/tdd.md`.
+For Python projects, also load `@{{ ai_folder }}/instructions/python/testing.md`.
+
+### 1. Build a test list
+
+Write a flat, plain-text list of every behaviour the change implies.
+One line each. Don't filter yet — capture everything you can think of,
+including edge cases, error paths, and "obvious" cases. Keep this list
+visible throughout the cycle.
+
+Example:
+```
+- placing an order with empty items raises
+- placing an order returns a new order id
+- placing an order persists it via the repository
+- refunding an unpaid order raises
+- refunding a paid order marks status REFUNDED
+- refunding a refunded order is idempotent
+- ...
+```
+
+### 2. Pick one — the smallest meaningful test
+
+Pick the simplest item that gets you closer to the change. Smaller is
+better. If the item still feels too big, split it.
+
+### 3. RED — write the failing test
+
+- Place it in the right `tests/` subfolder (see
+  `../general/testing.md` for layout).
+- Name it as a sentence: `test_<unit>_<condition>_<expected>`.
+- Arrange / Act / Assert layout, blank lines between phases.
+- Run the test. **Confirm it fails for the reason you expect** — not
+  because of an import error or a typo.
+
+{% if 'python' in languages %}For Python: `uv run pytest path/to/test_file.py::test_name -x`.
+{% endif %}
+
+### 4. GREEN — simplest code that passes
+
+Write the *minimum* code to make the test pass. Sins are allowed:
+hardcoded return values, copy-paste, ugly conditionals. The only goal
+is the green bar.
+
+Run the *whole* test suite — not just the new test. Confirm nothing
+else broke.
+
+{% if 'python' in languages %}For Python: `uv run pytest`.
+{% endif %}
+
+### 5. REFACTOR — clean up under the safety net
+
+Now that the bar is green and you trust it:
+
+- Remove duplication.
+- Rename badly-named things.
+- Extract helpers / classes / value objects.
+- Apply patterns from `python/patterns.md` if relevant.
+- Apply fixes from `python/code-smells.md` if any apply.
+
+Run the suite after every small change. If anything goes red, undo the
+last edit and try a smaller step.
+
+### 6. Update the list, repeat
+
+Cross off the item you just did. Add any new items you discovered.
+Loop back to step 2.
+
+When the list is empty, you're done with this slice of behaviour.
+
+## Boundaries — when NOT to use this skill
+
+- **Spikes / exploratory prototypes** you will delete. Write to learn,
+  then delete and start fresh with TDD.
+- **Trivial accessors and DTOs** with no logic.
+- **Pure refactors that don't change observable behaviour** — the
+  existing tests are the safety net; you're not adding new tests.
+
+## Reporting back
+
+After a cycle (or a few), summarise:
+- Items completed (cross-referenced to the list).
+- Items remaining on the list.
+- Any items added during work.
+- Whether the suite is green.
+
+Do not paste the full test output unless the user asks for it.

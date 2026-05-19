@@ -1,0 +1,132 @@
+# Rust style
+
+The authoritative external references are the
+[Rust API Guidelines](https://rust-lang.github.io/api-guidelines/) and
+[rustfmt](https://rust-lang.github.io/rustfmt/) defaults. Rules below
+either match or tighten them.
+
+## Formatting
+
+- **`rustfmt` defaults — no custom `rustfmt.toml`** unless there's a
+  specific, recorded reason. Hand-formatting is forbidden.
+  Run `cargo fmt --all` (recipe: `just rust-fmt`).
+- **Line length:** rustfmt default (100). Don't argue.
+- Trailing commas everywhere they're allowed.
+
+## Edition and toolchain
+
+- **Edition 2021 minimum.** Use 2024 if the project was created after
+  it stabilised.
+- Pin the toolchain explicitly with `rust-toolchain.toml` so CI and
+  contributors agree. Use `stable` unless a specific feature requires
+  nightly (in which case justify it next to the pin).
+
+## Naming (from the API Guidelines, C-CASE)
+
+- `snake_case` — modules, functions, methods, variables, lifetimes
+  (`'a`).
+- `UpperCamelCase` — types, traits, type parameters (`T`, `K`, `Item`),
+  enum variants.
+- `SCREAMING_SNAKE_CASE` — `const` and `static`.
+- Conversion methods: `as_*` (free, no allocation), `to_*` (borrowed →
+  owned), `into_*` (consumes self). Don't invent fourth names.
+- Getters: no `get_` prefix. `foo.name()`, not `foo.get_name()`. Setter
+  is `set_name`.
+- Predicates return `bool` and are named with `is_` / `has_` / `can_`.
+- Iterator-returning methods: `iter()` (borrow), `iter_mut()` (mut
+  borrow), `into_iter()` (consume).
+
+## Documentation
+
+- Public items must have `///` doc comments. Use full sentences, link
+  to related items with intra-doc links (`[`Foo`]`).
+- **Every public item gets at least one runnable example** in a doc
+  test (the API guidelines call this out explicitly). Doc tests are
+  examples and tests at once.
+- Document panic conditions in a `# Panics` section; document errors
+  in `# Errors`; document `unsafe` preconditions in `# Safety`.
+
+```rust
+/// Computes the area of a circle.
+///
+/// # Errors
+///
+/// Returns [`Error::NegativeRadius`] if `radius` is negative.
+///
+/// # Examples
+///
+/// ```
+/// # use mycrate::circle_area;
+/// assert!((circle_area(1.0).unwrap() - std::f64::consts::PI).abs() < 1e-9);
+/// ```
+pub fn circle_area(radius: f64) -> Result<f64, Error> { /* … */ }
+```
+
+## Imports and modules
+
+- Group imports by source: `std` / external crates / `crate::` / `super`
+  / `self`. rustfmt handles this when `group_imports = "StdExternalCrate"`
+  is set, but the project uses defaults — manual grouping is fine and
+  rustfmt won't undo it.
+- Don't `use foo::*` outside of preludes or trait-method-bringing
+  patterns. Be explicit.
+- Modules are small files; `mod.rs` is allowed but the modern
+  convention is `foo.rs` + `foo/`-subdirectory.
+
+## Error handling — the bedrock rule
+
+- **Libraries use `thiserror`.** Define a crate-level error enum with
+  `#[derive(thiserror::Error)]`. Each variant is a specific failure
+  with a `#[from]` for transparent conversion where it makes sense.
+- **Binaries use `anyhow`.** `anyhow::Result<T>` everywhere by default.
+  Add `.context("doing X")` at each layer.
+- **Never `unwrap()` or `expect("...")` in production code paths.**
+  In tests and `main()` where panic is acceptable: fine, but always
+  pair `expect` with a useful message.
+- Prefer `?` for propagation. Use the `From`/`Into` derive on your
+  error types so `?` works seamlessly.
+- `panic!` is for unrecoverable invariant violations only. Never panic
+  in a library API for ordinary input errors — return a `Result`.
+
+## Lints
+
+- **Clippy must be clean.** `cargo clippy --all-targets --all-features
+  -- -D warnings` is the gate. (Recipe: `just rust-lint`.)
+- Project lints in `Cargo.toml`:
+
+  ```toml
+  [lints.rust]
+  unsafe_code = "forbid"   # remove if you legitimately need unsafe
+  missing_docs = "warn"
+
+  [lints.clippy]
+  pedantic = { level = "warn", priority = -1 }
+  unwrap_used = "warn"
+  expect_used = "warn"
+  panic = "warn"
+  todo = "warn"
+  unimplemented = "warn"
+  ```
+
+  Loosen these per-crate only with a documented reason.
+
+## `unsafe`
+
+- Default to forbidding it (`#![forbid(unsafe_code)]`).
+- If you need it: scope to the smallest possible block, write a
+  `// SAFETY: ...` comment explaining every invariant the caller must
+  uphold, and pair with a sound safe wrapper.
+
+## Loose ends to avoid
+
+- `.clone()` for "just to make it compile". Each clone is a copy —
+  either borrow, restructure, or accept the cost knowingly.
+- `Box<dyn Trait>` when generics would do. Use `impl Trait` or generics
+  for performance-sensitive paths; reserve dyn dispatch for genuine
+  heterogeneity.
+- `Rc<RefCell<...>>` in `domain/`. If you need interior mutability in
+  pure domain logic, you've usually modelled the problem wrong.
+- Returning `&str` from a function that allocates — return `String`.
+- `String` parameters when `&str` would do. Take the slice; let the
+  caller choose ownership.
+- `Vec` parameters when `&[T]` would do, same logic.

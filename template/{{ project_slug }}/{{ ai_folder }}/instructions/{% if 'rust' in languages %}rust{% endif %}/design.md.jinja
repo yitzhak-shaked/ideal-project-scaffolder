@@ -1,0 +1,126 @@
+# Rust design philosophy
+
+Rust's type system is the design tool. Most of what other languages
+solve with patterns or runtime checks, Rust solves with types. Use
+that.
+
+External companion reading: *Effective Rust* (David Drysdale),
+*Rust for Rustaceans* (Jon Gjengset), the
+[Rust API Guidelines](https://rust-lang.github.io/api-guidelines/).
+
+## Make invalid states unrepresentable
+
+The single most important Rust design principle.
+
+- Use `enum` for sum types — anywhere you'd otherwise have "this string
+  is either `'pending'`, `'paid'`, or `'refunded'`", an `enum` does it
+  with compile-time exhaustiveness.
+- Use the **newtype pattern** for primitives that mean something
+  specific. `struct UserId(u64);` is one line and eliminates a whole
+  class of "I passed an order id where a user id was expected" bugs.
+- Use `Option<T>` for "may be absent" — never sentinel values, never
+  `-1`-means-missing. `Option<T>` participates in exhaustive matching.
+- Use `Result<T, E>` for "may fail" — never out-parameters, never
+  global error state.
+- Use the **type-state pattern** (different types for different states
+  of an object) when the legal-operations-per-state set is non-trivial:
+  `Builder<Unset>` → `Builder<Configured>` → `Built`.
+
+If your function's contract reads "if X then Y must be set", that's a
+type-state signal — encode it.
+
+## Traits are interfaces; prefer composition
+
+- Traits define behaviour, not identity. Don't reach for inheritance —
+  Rust doesn't have it, and trying to fake it (deep trait hierarchies,
+  `dyn` chains) defeats the borrow checker.
+- For shared behaviour, compose: a struct *has-a* `Box<dyn Logger>`,
+  or generic `L: Logger`.
+- Static dispatch (`impl Trait`, `T: Trait`) is the default.
+  Dynamic dispatch (`dyn Trait`) is for genuine heterogeneity (a
+  `Vec<Box<dyn Renderer>>` of different renderer types).
+
+## Ownership and borrowing — the layering rule
+
+Think of ownership the way DDD thinks of aggregates: one owner per
+piece of data, others borrow.
+
+- Functions that **consume** the value: take `T` (by value).
+- Functions that **read** the value: take `&T`.
+- Functions that **mutate**: take `&mut T`.
+- Don't take `&mut T` when `&T` would suffice — it forecloses
+  parallelism for no gain.
+- Lifetimes are not annotations to slap on until the compiler stops
+  yelling — they document the relationship between borrows. When
+  elision can't figure it out, name them in a way that makes the
+  relationship readable (`<'src, 'dst>`, not `<'a, 'b>`).
+
+## Builder pattern for non-trivial constructors
+
+When a struct has 4+ configuration knobs or some are optional, use a
+builder. The
+[derive_builder](https://crates.io/crates/derive_builder) crate
+handles the boilerplate, but a hand-written builder is fine too. Builders
+combine cleanly with the type-state pattern (`Builder<Unset>` → `Built`).
+
+## Errors as values
+
+- Library code: define an error `enum` with `thiserror::Error`. One
+  variant per failure mode. Implement `From` for any wrapped errors so
+  `?` works.
+- Application code: `anyhow::Result<T>`, with `.context("…")` at each
+  layer of the call stack to leave a breadcrumb trail in the eventual
+  error message.
+- Cross the boundary once. The application's main use-case method
+  returns `anyhow::Result`; the libraries it calls return their own
+  typed errors which `?` lifts into `anyhow::Error`.
+
+## Async is a colour — pick deliberately
+
+- An entire crate is async or it isn't. Don't sprinkle `async fn` into
+  a sync codebase; the await colour spreads.
+- Pick **one** runtime per binary: tokio for most server work,
+  embassy/async-std for embedded/special cases. Don't mix.
+- Async traits are routine on stable now — write `trait Foo {
+  async fn bar(&self); }` directly when targeting Rust 1.75+.
+- Don't block in async code. `tokio::task::spawn_blocking` for the
+  rare CPU-bound or sync-only operation.
+
+## The Clean Architecture mapping
+
+The DDD layering from `general/architecture.md` maps to Cargo crates
+or modules:
+
+| Layer | Rust expression |
+| --- | --- |
+| `domain` | Plain structs and enums with methods. No `tokio`, `sqlx`, `reqwest`. Trait definitions for what the domain *needs from the world* — `trait OrderRepository`. |
+| `application` | Use-case functions / structs that take generic `R: OrderRepository`. |
+| `infrastructure` | Concrete `impl OrderRepository for SqlxOrderRepo`. Imports the database driver. |
+| `presentation` | `main.rs` + the HTTP framework. Wires concrete types into generics at startup. |
+
+This is the same composition root idea: the place where `T = SqlxOrderRepo`
+gets chosen exists once, at the program entry point.
+
+## Don't fight the borrow checker — listen to it
+
+When the compiler complains, it's usually pointing at a real design
+problem, not a syntactic one. Common translations:
+
+- "Cannot borrow `x` as mutable because it's already borrowed as
+  immutable" → the function is doing two things; split it.
+- "Cannot move out of borrowed content" → you're trying to consume
+  something you only borrowed; either clone (knowing the cost) or
+  rethink ownership.
+- "Lifetime of `'a` does not outlive `'b`" → the data you're handing
+  out doesn't live long enough; the caller needs to keep the owner
+  alive longer, or you need to return owned data.
+
+## Performance hygiene
+
+Don't micro-optimise during design. Do default to:
+- Avoid `Box<dyn ...>` in hot paths.
+- Iterators over manual indexing.
+- `&[T]` parameters over `Vec<T>` (caller can pass either).
+- `Cow<'_, T>` when borrowing usually works but occasionally needs to
+  own.
+- `#[inline]` only when you've measured.

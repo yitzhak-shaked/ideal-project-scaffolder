@@ -1,0 +1,110 @@
+# TypeScript tooling
+
+This project uses a **single package manager** — pick one and commit
+its lockfile only. The recipes in `Justfile` are written for `npm`
+because it's universally available; swap to `pnpm` (recommended) or
+`yarn` by editing the recipes.
+
+## Package manager
+
+- **Use one** of: `npm`, `pnpm`, or `yarn`. Never mix.
+- **Commit the lockfile** for the chosen manager:
+  - `npm` → `package-lock.json`
+  - `pnpm` → `pnpm-lock.yaml`
+  - `yarn` → `yarn.lock`
+- **Delete the other two** lockfile types from the repo.
+- Pin the manager version with [Corepack](https://nodejs.org/api/corepack.html):
+
+  ```json
+  // package.json
+  "packageManager": "pnpm@9.12.0"
+  ```
+
+  Then `corepack enable` once per machine; the right version is used
+  automatically.
+
+## Node version
+
+- **Node 20 LTS minimum.** Pin the version with `.nvmrc` or
+  `.node-version`:
+
+  ```
+  20
+  ```
+
+  CI must read the same file.
+
+## The commands you need
+
+| Action | Recipe | Underlying (npm) |
+| --- | --- | --- |
+| Install all deps | `just ts-install` | `npm install` |
+| Add a runtime dep | — | `npm install <pkg>` |
+| Add a dev dep | — | `npm install -D <pkg>` |
+| Remove a dep | — | `npm uninstall <pkg>` |
+| Build | `just ts-build` | `npm run build` |
+| Test | `just ts-test` | `npm test` |
+| Lint | `just ts-lint` | `npm run lint` |
+| Type-check | — | `npm run typecheck` (`tsc --noEmit`) |
+| Format | — | `npm run format` |
+
+Map these to `package.json` scripts:
+
+```json
+"scripts": {
+  "build":      "tsc --build",
+  "test":       "vitest run",
+  "test:watch": "vitest",
+  "lint":       "biome check .",
+  "format":     "biome format --write .",
+  "typecheck":  "tsc --noEmit"
+}
+```
+
+## The toolchain
+
+| Tool | Purpose | Notes |
+| --- | --- | --- |
+| `typescript` | Compiler | `tsc --noEmit` for type-check, `tsc --build` for emit. |
+| **Biome** (preferred) | Lint + format | Single binary, fast, replaces ESLint + Prettier. |
+| ESLint + Prettier | Lint + format | Use if Biome's rule set isn't enough yet for your stack. |
+| `vitest` | Test runner | Vite-native, fast, Jest-compatible API. |
+| `@vitest/coverage-v8` | Coverage | `vitest run --coverage`. |
+| `fast-check` | Property-based testing | Use on pure functions, parsers, value-object validators. |
+| `tsx` | Run TS directly | `tsx scripts/foo.ts` for ad-hoc scripts. |
+| `zod` / `valibot` / `arktype` | Runtime schemas | Validate at the boundary; types flow in. |
+| `type-fest` | Utility types | Battle-tested helpers (`SetRequired`, `ReadonlyDeep`, …). |
+
+## tsconfig: keep one source of truth
+
+- One `tsconfig.json` for source code, one `tsconfig.test.json` for
+  tests if test-only types differ.
+- Project references (`"references": [...]`) for multi-package
+  monorepos. Use `tsc --build` to compile in topological order.
+- Path aliases (`@/*` → `src/*`) keep imports readable. Mirror them in
+  the bundler config and the test runner (`vitest.config.ts`).
+
+## Workspaces / monorepos
+
+- **pnpm workspaces** is the smoothest experience; `npm` and `yarn`
+  also support it.
+- Hoist with care — `pnpm` doesn't by default, which catches phantom
+  dependencies.
+- Use `changesets` for versioning if you publish multiple packages.
+
+## What gets committed
+
+- `package.json`, the chosen lockfile, `tsconfig.json`(s), `.nvmrc`.
+- **Not** `node_modules/`, **not** `dist/` (regenerate from CI).
+- `.env` is gitignored; `.env.example` is committed.
+
+## Anti-patterns
+
+- ❌ Two lockfiles in the same repo.
+- ❌ A different Node version locally vs. in CI.
+- ❌ `npm install --save` with `^x.y.z` ranges *and* no committed
+  lockfile (non-reproducible builds).
+- ❌ `tsc` invoked with override flags on the command line that
+  disagree with `tsconfig.json`.
+- ❌ Running `node script.js` after manually transpiling. Use `tsx
+  script.ts`.
