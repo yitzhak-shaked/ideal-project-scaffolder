@@ -1,0 +1,20 @@
+# tests/integration/
+
+Tests that exercise **multiple components together with real adapters** —
+a real database, a real message queue, a real HTTP client against a
+sandboxed peer. Slower than unit tests; faster than e2e.
+
+Belongs here:
+- Repository implementations against a real database (or testcontainers)
+- Application services with their real infrastructure dependencies wired up
+- Migrations applied to a real schema
+- Adapter contracts (does our wrapper correctly translate the upstream API)
+
+Does **not** belong here:
+- Pure-logic tests that don't need a real backend — those go in `../unit/`
+- Full user-flow scenarios across the deployed system — those go in `../e2e/`
+
+Each test should set up and tear down its own state; tests must be
+runnable in any order.
+
+Canonical reference: `{{ ai_folder }}/instructions/general/testing.md`.

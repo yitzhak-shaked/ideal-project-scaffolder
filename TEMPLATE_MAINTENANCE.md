@@ -10,7 +10,7 @@ inside template files. There is no custom rules engine.
 copier.yml                # The questionnaire
 README.md                 # User-facing quickstart
 TEMPLATE_MAINTENANCE.md   # This file
-_hooks/post_generation.py # Post-render cleanup (underscore empty dirs)
+_hooks/post_generation.py # Post-render cleanup
 template/                 # Everything below is rendered into the target project
 ```
 
@@ -66,12 +66,19 @@ Instructions are split by audience:
 
 - `template/{{ ai_folder }}/instructions/general/` — language-agnostic
   rules (always loaded).
-- `template/{{ ai_folder }}/instructions/{% if 'python' in languages %}python{% endif %}/`
-  — Python-specific. The folder name is itself a Jinja gate; the whole
-  subtree is skipped if Python isn't selected.
-- New languages should mirror the Python pattern: create a sibling
-  folder gated by `'<lang>' in languages` and populate it with the
-  same shape (`zen.md`/style/tooling/design/patterns/code-smells/testing).
+- `template/{{ ai_folder }}/instructions/python/` — Python-specific.
+
+**Gating rule (important):** language subtrees use **plain folder names**
+(`python/`, `rust/`, …) and gate **each file inside** with a conditional
+filename, e.g.
+`python/{% if 'python' in languages %}style.md{% endif %}.jinja`.
+
+Do **not** gate the folder name itself (e.g.
+`{% if 'python' in languages %}python{% endif %}/`). Conditional directory
+names render unreliably across Copier versions and on Windows. Per-file
+gating is the proven pattern. There is a `.gitkeep` in each language
+folder so Copier always creates the directory; the post-generation hook
+prunes empty `instructions/` and `skills/` children as a safety net.
 
 To add a file:
 
@@ -79,8 +86,8 @@ To add a file:
 2. Add a link to it in:
    - the relevant `README.md.jinja` inside that bucket (the human-facing index), and
    - the agent file templates (`CLAUDE.md.jinja` uses `@`-mentions;
-     `AGENTS.md.jinja`, `.cursorrules.jinja`, and
-     `.github/copilot-instructions.md.jinja` use plain markdown links).
+     `AGENTS.md.jinja` and `.github/copilot-instructions.md.jinja` use
+     plain markdown links).
 3. If the file should only render when a particular question was
    answered a particular way, gate its filename (not its content):
    `template/.../{% if condition %}your-topic.md{% endif %}.jinja`.
@@ -120,10 +127,18 @@ agent-appropriate location. References inside agent files use
 
 ## Post-generation hook
 
-`_hooks/post_generation.py` runs after Copier renders. It only does one
-thing: walks the output tree and renames empty directories (or directories
-containing only `.gitkeep`) to `_<name>/`. If you need additional cleanup
-work after generation, add it there — keep it idempotent and safe to rerun.
+`_hooks/post_generation.py` runs after Copier renders. It does three things:
+
+1. Strips `.gitkeep` sentinels from directories that ended up with real content.
+2. Prunes empty children under `instructions/` and `skills/` parents (so an
+   unselected language doesn't leave an empty folder behind).
+3. Prunes empty top-level hidden dirs (`.claude/`, `.github/`, `.vscode/`,
+   `.ai/`) whose conditional contents all skipped.
+
+If you need additional cleanup, add it there — keep it idempotent and safe
+to rerun. The hook no longer does the underscore-prefix rename that older
+versions did; DDD folders (`src/domain/`, etc.) ship with explanatory
+`README.md` files so they're never empty.
 
 ## Testing changes
 
@@ -134,5 +149,8 @@ uvx copier copy --defaults . /tmp/scaffold-smoke-1
 uvx copier copy . /tmp/scaffold-smoke-2   # interactive, exercise different answers
 ```
 
-Diff the outputs against expectations and inspect the agent file, MCP config,
-and language manifests to confirm conditionals fire correctly.
+Diff the outputs against expectations. Things worth checking:
+
+- `src/{domain,application,infrastructure,presentation}/README.md` exist
+  and are not empty.
+- No `.cursorrules` is ever produced.

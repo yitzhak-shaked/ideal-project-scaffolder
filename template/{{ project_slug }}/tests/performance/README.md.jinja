@@ -1,0 +1,20 @@
+# tests/performance/
+
+Benchmarks and load tests that measure throughput, latency, or resource
+use under defined workloads. These do **not** assert correctness — that's
+the job of `../unit/`, `../integration/`, and `../e2e/`.
+
+Belongs here:
+- Microbenchmarks for hot paths
+- Load tests that drive sustained traffic against the running system
+- Memory / allocation profiles for tight loops
+- Regression baselines (committed numbers that CI can diff against)
+
+Does **not** belong here:
+- One-shot timing prints inside otherwise-correctness tests
+- Profiling scripts that aren't reproducible (those belong in `scripts/`)
+
+Each benchmark should declare what it measures, what workload it runs,
+and what threshold (if any) counts as a regression.
+
+Canonical reference: `{{ ai_folder }}/instructions/general/testing.md`.

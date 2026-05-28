@@ -1,0 +1,23 @@
+# src/presentation/
+
+The **presentation layer** — the surface that an outside caller (user,
+script, peer service) interacts with. It translates between external wire
+formats and the application layer's use-case API.
+
+Belongs here:
+- HTTP route handlers / controllers
+- CLI command definitions and argument parsing
+- gRPC service implementations
+- Request/response DTOs and serializers
+- Input validation (shape, types, missing fields)
+- View models / view templates
+
+Does **not** belong here:
+- Business rules (live in `../domain/`)
+- Multi-step workflows or transactions (live in `../application/`)
+- Concrete I/O backends (live in `../infrastructure/`)
+
+A handler in this layer should be thin: parse the request, call an
+application service, format the response, return.
+
+Canonical reference: `{{ ai_folder }}/instructions/general/architecture.md`.

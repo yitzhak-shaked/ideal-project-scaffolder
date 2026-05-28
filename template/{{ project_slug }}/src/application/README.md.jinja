@@ -1,0 +1,20 @@
+# src/application/
+
+The **application layer** — use cases, orchestration, and transaction
+boundaries. Knows the domain; does not know HTTP, the database driver, or
+the UI framework.
+
+Belongs here:
+- Application services / use-case handlers (one per user-facing intent)
+- Command and query handlers
+- Transaction / unit-of-work coordination
+- Cross-aggregate workflows
+- Authorization at the use-case level (the domain layer enforces invariants;
+  the application layer enforces "is this user allowed to do this")
+
+Does **not** belong here:
+- Business rules — those belong on entities/aggregates in `../domain/`
+- Wire formats, request parsing, view models — those go in `../presentation/`
+- Concrete repository implementations — those go in `../infrastructure/`
+
+Canonical reference: `{{ ai_folder }}/instructions/general/architecture.md`.

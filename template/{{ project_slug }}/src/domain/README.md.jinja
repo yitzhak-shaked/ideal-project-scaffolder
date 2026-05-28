@@ -1,0 +1,20 @@
+# src/domain/
+
+The **domain layer** — pure business logic with no I/O, no framework
+dependencies, and no awareness of how it's persisted or served.
+
+Belongs here:
+- Entities (objects with identity that change over time)
+- Value objects (immutable, equality by value)
+- Aggregates and their roots
+- Domain services (business operations that don't naturally fit on an entity)
+- Domain events
+- Repository **interfaces** (the contract; the implementation lives in `../infrastructure/`)
+
+Does **not** belong here:
+- ORM models, SQL, HTTP clients, file I/O — those go in `../infrastructure/`
+- Use-case orchestration, transactions, command/query handlers — those go in `../application/`
+- Anything that imports a framework
+
+Canonical reference: `{{ ai_folder }}/instructions/general/ddd.md`. The
+layering rules live in `{{ ai_folder }}/instructions/general/architecture.md`.

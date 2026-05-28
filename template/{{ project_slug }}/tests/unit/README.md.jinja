@@ -1,0 +1,21 @@
+# tests/unit/
+
+Fast, isolated tests for a single unit (a function, a class, an aggregate)
+with **no I/O** — no real database, no network, no filesystem outside
+temp dirs. Should run in milliseconds.
+
+Belongs here:
+- Tests for domain entities, value objects, aggregates
+- Tests for application-service logic with in-memory repositories
+- Tests for pure helpers and parsers
+
+Does **not** belong here:
+- Anything that hits a real database — that's `../integration/`
+- End-to-end scenarios — that's `../e2e/`
+- Benchmarks — those go in `../performance/`
+
+These are the tests TDD's red→green→refactor loop runs against. Keep
+them fast or they'll be skipped.
+
+Canonical references: `{{ ai_folder }}/instructions/general/tdd.md`,
+`{{ ai_folder }}/instructions/general/testing.md`.

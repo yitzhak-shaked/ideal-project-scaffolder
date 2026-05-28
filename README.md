@@ -74,8 +74,8 @@ you do this, `claude mcp list` will only show your account-level
 - Language manifests for every language you ticked (`Cargo.toml`,
   `pyproject.toml`, `package.json`, `CMakeLists.txt`).
 - DDD `src/{application,domain,infrastructure,presentation}` and full
-  `tests/{unit,integration,e2e,performance}` layout. Empty dirs are
-  underscore-prefixed (`_e2e/`) so they're visibly inert until you fill them.
+  `tests/{unit,integration,e2e,performance}` layout, each layer with a
+  `README.md` that explains what belongs there.
 - `Justfile`, `.gitignore`, `.env.example`, optional `.github/workflows/ci.yml`,
   and `.vscode/` settings.
 

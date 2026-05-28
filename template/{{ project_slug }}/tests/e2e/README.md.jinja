@@ -1,0 +1,19 @@
+# tests/e2e/
+
+End-to-end tests that drive the system the way a real user or peer would —
+through its presentation layer, against the real stack, with all
+adapters wired up.
+
+Belongs here:
+- HTTP scenarios that hit a running server and assert on responses
+- CLI scenarios that invoke the binary and assert on stdout/exit codes
+- Cross-feature flows that span multiple use cases
+
+Does **not** belong here:
+- Anything that mocks part of the stack — go a layer in to `../integration/`
+- Anything that doesn't need the full system — go a layer in to `../unit/`
+
+These tests are slow and brittle by nature. Keep them focused on critical
+user flows; let unit and integration tests carry the coverage load.
+
+Canonical reference: `{{ ai_folder }}/instructions/general/testing.md`.

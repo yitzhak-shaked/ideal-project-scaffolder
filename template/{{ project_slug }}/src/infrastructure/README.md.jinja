@@ -1,0 +1,24 @@
+# src/infrastructure/
+
+The **infrastructure layer** — concrete implementations of the contracts
+declared in `../domain/`, plus everything that talks to the outside world.
+
+Belongs here:
+- Repository implementations (SQL, ORM, key-value store, in-memory for tests)
+- HTTP / gRPC / message-queue clients
+- File and network I/O
+- Email / SMS / push-notification adapters
+- Caching backends
+- Time, UUID, and other "impure" providers behind a domain-level interface
+
+Does **not** belong here:
+- Business rules
+- Use-case orchestration
+- Any module that other layers may import directly without going through a
+  domain-layer interface
+
+The rule of thumb: `../domain/` declares **what** is needed; this layer
+provides **how** it's done. Wiring (which concrete implementation gets
+injected where) happens at the composition root, not here.
+
+Canonical reference: `{{ ai_folder }}/instructions/general/architecture.md`.
