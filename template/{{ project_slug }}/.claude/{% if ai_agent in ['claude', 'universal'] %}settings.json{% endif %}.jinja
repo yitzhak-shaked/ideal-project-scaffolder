@@ -1,0 +1,9 @@
+{
+  "_comment": "Project-scope plugin governance. Project settings override user settings per-key (https://code.claude.com/docs/en/plugins-reference). Each plugin listed here with `false` is disabled inside this project even when the user has it enabled globally. Reason: this project ships its own curated skill set under .claude/skills/; the plugins below either duplicate that surface or impose conventions that conflict with the scaffolded structure. To re-enable any of these inside this project, run `claude plugin enable -s project <name>` or flip the value to true. MCP servers and LSP plugins are intentionally NOT disabled here.",
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": false,
+    "claude-code-setup@claude-plugins-official": false,
+    "commit-commands@claude-plugins-official": false
+  }
+}

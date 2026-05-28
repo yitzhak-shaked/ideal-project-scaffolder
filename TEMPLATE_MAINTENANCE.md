@@ -4,14 +4,40 @@ How to extend this scaffolder. The template is intentionally simple — almost
 all logic lives in `copier.yml` (the questionnaire) and in Jinja conditionals
 inside template files. There is no custom rules engine.
 
+## Closed-world design
+
+This scaffolder produces projects that ship with their own curated tool
+surface. The intent: a developer running an agent inside a rendered
+project should see the same skills, conventions, and folders regardless of
+what plugins they have installed globally.
+
+Concretely:
+
+- **Skills are vendored**, not assumed. Tier-1 and selected Tier-2 skills
+  from `obra/superpowers-skills` are copied into
+  `template/{{ project_slug }}/{{ ai_folder }}/skills/` at refresh time
+  (see "Refreshing vendored skills" below).
+- **Global plugins that overlap with vendored skills are silenced** at
+  project scope via `enabledPlugins` in
+  `template/{{ project_slug }}/.claude/settings.json.jinja`. Project
+  settings override user settings per-key, so plugins listed there with
+  `false` are disabled inside this project even when the user has them
+  enabled globally.
+- **MCP servers and LSP plugins are deliberately left alone** — they're
+  "connectors" the user controls, not opinionated workflow plugins.
+
+If a new well-known plugin emerges that overlaps with our vendored skills,
+add it to the `enabledPlugins` map in `.claude/settings.json.jinja`.
+
 ## Layout
 
 ```
-copier.yml                # The questionnaire
-README.md                 # User-facing quickstart
-TEMPLATE_MAINTENANCE.md   # This file
-_hooks/post_generation.py # Post-render cleanup
-template/                 # Everything below is rendered into the target project
+copier.yml                          # The questionnaire
+README.md                           # User-facing quickstart
+TEMPLATE_MAINTENANCE.md             # This file
+_hooks/post_generation.py           # Post-render cleanup
+scripts/refresh-vendored-skills.py  # Re-pull upstream superpowers skills
+template/                           # Everything below is rendered into the target project
 ```
 
 Files in `template/` ending in `.jinja` are processed; the suffix is stripped
@@ -92,7 +118,7 @@ To add a file:
    answered a particular way, gate its filename (not its content):
    `template/.../{% if condition %}your-topic.md{% endif %}.jinja`.
 
-## Adding a new skill or subagent
+## Adding a new project-local skill or subagent
 
 - **Skill:** `template/{{ ai_folder }}/skills/<skill-name>/SKILL.md.jinja`.
   Must have YAML frontmatter with `name` and `description`. The
@@ -102,28 +128,59 @@ To add a file:
 - **Subagent:** `template/{{ ai_folder }}/agents/<agent-name>.md.jinja`.
   Must have YAML frontmatter with `name` and `description`. The body
   is the role prompt.
-- Language- or domain-specific skills/agents: gate the *folder or
-  filename* with Jinja (e.g.
-  `template/.../skills/{% if 'python' in languages %}python-uv-setup{% endif %}/SKILL.md.jinja`).
+- Language- or domain-specific skills/agents: gate the *filename* with
+  Jinja, never the folder name.
+
+## Refreshing vendored skills (upstream superpowers updates)
+
+The Tier-1 / Tier-2 superpowers skills under
+`template/{{ project_slug }}/{{ ai_folder }}/skills/` are vendored at a
+pinned tag. To bump:
+
+1. Edit the `superpowers_skills_tag` default in `copier.yml`.
+2. Run:
+   ```
+   python scripts/refresh-vendored-skills.py
+   ```
+   The script clones `obra/superpowers-skills` at the pinned tag and
+   re-copies the curated skill directories, wrapping each `SKILL.md`
+   body in `{% raw %}` / `{% endraw %}` so Copier treats it as literal.
+   To work offline against a local checkout (e.g. the plugin cache),
+   pass `--source <path>`.
+3. Review the diff, run smoke tests, commit.
+
+The Tier-1 / Tier-2 lists live inside the script. To vendor a different
+skill, add its name to the `TIER_1` list (always rendered) or `TIER_2`
+map (rendered only when the named quiz var is true).
+
+`ATTRIBUTION.md.jinja` is regenerated automatically from the upstream
+LICENSE every time the script runs.
 
 ## The `{{ ai_folder }}` directory
 
 `ai_folder` is computed in `copier.yml` from `ai_agent` + `agent_file_style`:
 - Claude canonical → `.claude/`
-- Cursor canonical → `.cursor/`
 - Anything else → `.ai/`
 
 Everything under `template/{{ ai_folder }}/` is rendered into that
 agent-appropriate location. References inside agent files use
 `{{ '{{ ai_folder }}' }}/instructions/...` so links survive the rename.
 
-## Adding a new agent
+`.claude/settings.json` is the **exception**: it's rendered into the
+literal `.claude/` directory (not `{{ ai_folder }}`) because that's where
+Claude Code looks regardless of how the rest of the project is named.
+
+## Adding a new top-level agent
+
+Currently `ai_agent` accepts `claude`, `copilot`, `universal`. To add another:
 
 1. Add the choice to `ai_agent` in `copier.yml`.
-2. Create a conditional template file at the path that agent expects, e.g.
-   `template/{% if ai_agent == 'newagent' and agent_file_style == 'canonical' %}.newagent.md{% endif %}.jinja`.
-3. Mirror the section structure of the existing agent files (BOOTSTRAP block,
+2. Update `ai_folder`'s computation if the agent has a native folder name.
+3. Create a conditional template file at the path that agent expects.
+4. Mirror the section structure of the existing agent files (BOOTSTRAP block,
    instructions link, MCP note).
+5. If the agent has a CLI that supports per-project plugin governance,
+   render a settings file equivalent to `.claude/settings.json`.
 
 ## Post-generation hook
 

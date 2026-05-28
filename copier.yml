@@ -57,6 +57,7 @@ domain:
     CLI utility: cli
     Embedded / hardware: embedded
     Library / SDK: library
+  default: web
 
 ai_agent:
   type: str
@@ -79,15 +80,18 @@ mcp_servers:
   type: str
   multiselect: true
   help: "Which MCP servers? (SPACE to toggle each, ENTER to confirm)"
+  # Preselected options first. GitHub is intentionally NOT preselected: the
+  # `gh` CLI handles most issue/PR/code-search tasks with far less context
+  # overhead than the MCP server, so reach for the CLI first and only add the
+  # GitHub MCP if you specifically need it.
   choices:
-    "GitHub (issues, PRs, code search)": github
     "Filesystem (scoped file access)": filesystem
+    "Context7 (up-to-date library docs lookup)": context7
+    "GitHub (issues, PRs, code search — prefer the gh CLI first)": github
     "Fetch (HTTP fetch for docs/APIs)": fetch
     "Playwright (browser automation)": playwright
     "Postgres (read-only DB introspection)": postgres
-    "Context7 (up-to-date library docs lookup)": context7
   default:
-    - github
     - filesystem
     - context7
 
@@ -104,6 +108,29 @@ include_vscode:
   help: "Include shared .vscode/ editor settings + extension recommendations?"
   default: true
 
+include_brainstorming:
+  type: bool
+  help: |
+    Include the vendored brainstorming skill (Socratic design refinement
+    before any creative work). Recommended; keeps design conversations from
+    jumping straight to code.
+  default: true
+
+enable_worktrees:
+  type: bool
+  help: |
+    Include the using-git-worktrees skill. Useful for parallel feature work
+    or exploring alternative implementations without polluting the main tree.
+  default: false
+
+enable_parallel_agents:
+  type: bool
+  help: |
+    Include the dispatching-parallel-agents and subagent-driven-development
+    skills. Useful when you want the agent to fan out independent tasks to
+    sub-agents in the same session. Most solo projects don't need this.
+  default: false
+
 # Computed — not asked. Filesystem-safe slug derived from project_name.
 # This becomes the rendered project's top-level folder name.
 # (No regex_replace because Jinja's stock filter set doesn't include it.)
@@ -119,3 +146,10 @@ ai_folder:
   type: str
   when: false
   default: "{% if ai_agent == 'claude' and agent_file_style == 'canonical' %}.claude{% else %}.ai{% endif %}"
+
+# Computed — not asked. Pinned tag for the vendored superpowers skills.
+# Bumped by scripts/refresh-vendored-skills.py when refreshing.
+superpowers_skills_tag:
+  type: str
+  when: false
+  default: "v5.1.0"

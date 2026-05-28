@@ -65,12 +65,18 @@ you do this, `claude mcp list` will only show your account-level
   `AGENTS.md`) configured for your agent of choice (Claude Code, GitHub
   Copilot CLI, or Universal). Cursor is not supported.
 - An agent workspace folder — `.claude/` for Claude canonical, `.ai/`
-  otherwise — containing `instructions/`
-  (`coding-conventions.md` per chosen language, `architecture.md`,
-  `testing.md`, `security.md`), `skills/` (starter project skills), and
-  `agents/` (subagent definitions).
-- A preconfigured `.mcp.json` (or `.vscode/mcp.json`) with the MCP servers you
-  selected.
+  otherwise — containing `instructions/` (coding conventions per chosen
+  language, architecture, testing, security), `skills/` (a curated set
+  of skills vendored from `obra/superpowers-skills` — TDD, systematic
+  debugging, verification, writing/executing plans, code-review,
+  optionally brainstorming and worktree/parallel-agent skills — plus
+  project-local task skills), and `agents/` (subagent definitions).
+- A preconfigured `.mcp.json` (or `.vscode/mcp.json`) with the MCP servers
+  you selected.
+- A project-scope `.claude/settings.json` that silences globally-installed
+  Claude Code plugins which overlap with the vendored skills (superpowers,
+  claude-md-management, claude-code-setup, commit-commands). MCP servers
+  and LSP plugins are left alone.
 - Language manifests for every language you ticked (`Cargo.toml`,
   `pyproject.toml`, `package.json`, `CMakeLists.txt`).
 - DDD `src/{application,domain,infrastructure,presentation}` and full
@@ -82,4 +88,4 @@ you do this, `claude mcp list` will only show your account-level
 ## Extending the template
 
 See [TEMPLATE_MAINTENANCE.md](TEMPLATE_MAINTENANCE.md) for how to add a new
-question, language, MCP server, or instruction file.
+question, language, MCP server, instruction file, or vendored skill.
