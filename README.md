@@ -61,11 +61,11 @@ you do this, `claude mcp list` will only show your account-level
 
 ## What you get
 
-- An agent file (`CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`,
-  or `AGENTS.md`) configured for your agent of choice. It links to the
-  per-domain instruction set under the agent workspace folder.
-- An agent workspace folder — named `.claude/` for Claude canonical, `.cursor/`
-  for Cursor canonical, `.ai/` otherwise — containing `instructions/`
+- An agent file (`CLAUDE.md`, `.github/copilot-instructions.md`, or
+  `AGENTS.md`) configured for your agent of choice (Claude Code, GitHub
+  Copilot CLI, or Universal). Cursor is not supported.
+- An agent workspace folder — `.claude/` for Claude canonical, `.ai/`
+  otherwise — containing `instructions/`
   (`coding-conventions.md` per chosen language, `architecture.md`,
   `testing.md`, `security.md`), `skills/` (starter project skills), and
   `agents/` (subagent definitions).

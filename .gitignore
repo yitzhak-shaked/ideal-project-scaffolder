@@ -1,0 +1,4 @@
+_hooks/__pycache__/
+__pycache__/
+*.pyc
+.venv/

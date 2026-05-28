@@ -63,7 +63,6 @@ ai_agent:
   help: "Primary AI assistant for this project"
   choices:
     Claude Code: claude
-    Cursor: cursor
     GitHub Copilot: copilot
     Universal (any agent): universal
   default: claude
@@ -72,7 +71,7 @@ agent_file_style:
   type: str
   help: "How should agent instruction files be named?"
   choices:
-    "Per-agent canonical (CLAUDE.md / .cursorrules / copilot-instructions.md)": canonical
+    "Per-agent canonical (CLAUDE.md / copilot-instructions.md)": canonical
     "Generic AGENTS.md as source of truth, agent-specific files redirect to it": generic
   default: canonical
 
@@ -115,9 +114,8 @@ project_slug:
 
 # Computed — not asked. The agent workspace folder name.
 # - Claude canonical -> .claude/ (matches Claude Code's native folder)
-# - Cursor canonical -> .cursor/ (matches Cursor's native folder)
 # - Everything else  -> .ai/    (generic, agent-agnostic)
 ai_folder:
   type: str
   when: false
-  default: "{% if ai_agent == 'claude' and agent_file_style == 'canonical' %}.claude{% elif ai_agent == 'cursor' and agent_file_style == 'canonical' %}.cursor{% else %}.ai{% endif %}"
+  default: "{% if ai_agent == 'claude' and agent_file_style == 'canonical' %}.claude{% else %}.ai{% endif %}"

@@ -19,6 +19,16 @@ from the output filename. Filenames themselves are Jinja-evaluated — a
 filename that renders to the empty string is skipped, which is how
 conditional file emission works.
 
+## Supported agents
+
+- **Claude Code** (canonical: `CLAUDE.md`; generic: `AGENTS.md` + redirect)
+- **GitHub Copilot CLI** (canonical: `.github/copilot-instructions.md`;
+  generic: `AGENTS.md` + redirect)
+- **Universal** (just `AGENTS.md`)
+
+Cursor was dropped in May 2026: it lacks a CLI mature enough to drive the
+plugin-governance / spec-kit setup steps this scaffolder relies on.
+
 ## Adding a new question
 
 1. Edit `copier.yml` and add a new variable block. Pick `type: bool` for
