@@ -69,3 +69,27 @@ implementations.
    involved.
 4. Expose it via `presentation/`.
 5. Tests follow the same layering — see `testing.md`.
+
+## Where things live
+
+Every markdown artifact, source file, or test in this project has a
+canonical home. The table below is the contract; reuse these locations
+rather than inventing parallel ones.
+
+| Artifact | Canonical home | Created by |
+| --- | --- | --- |
+| Source code | `src/{domain,application,infrastructure,presentation}/` | You / the agent during implementation |
+| Tests | `tests/{unit,integration,e2e,performance}/` | You / the agent during implementation |
+| Tactical plans ("about to refactor X") | `docs/plans/YYYY-MM-DD-<slug>.md` | The vendored `writing-plans` skill |
+| Feature specifications (SDD audit trail) | `specs/<feature-slug>/{spec,plan,tasks}.md` | spec-kit (only if `use_spec_kit` and `just sdd-init` has run) |
+| Design notes / brainstorming output | `docs/design/<slug>.md` | Hand-written or vendored `brainstorming` skill |
+| Architecture / methodology docs | `{{ ai_folder }}/instructions/general/*.md` | Scaffolder; hand-edited after |
+| Standing principles | `{% if ai_agent == 'claude' and agent_file_style == 'canonical' %}CLAUDE.md{% elif ai_agent == 'copilot' and agent_file_style == 'canonical' %}.github/copilot-instructions.md{% else %}AGENTS.md{% endif %}` | Scaffolder; hand-edited after |
+| API reference docs | `docs/api/` | Generators or hand-written |
+| Long-form architecture docs | `docs/architecture/` | Hand-written |
+| User-facing manual | `docs/manual/` | Hand-written |
+
+**Do not create new top-level folders.** Reuse the entries above. If an
+artifact genuinely does not fit any row, propose adding a new row to this
+table before creating the folder — that keeps the layout discoverable and
+prevents specs, plans, and design notes from scattering across the repo.

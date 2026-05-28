@@ -1,10 +1,26 @@
 # {{ project_name }} — Copilot instructions
 
 <!-- BOOTSTRAP:START -->
-<!-- Fill these in on first project use, then delete this comment block. -->
+<!--
+FIRST-RUN TASK FOR THE AGENT. This file is deliberately a skeleton. On your
+first session in this project, before any substantial work:
+  1. Read the project README, the "Where things live" table in
+     {{ ai_folder }}/instructions/general/architecture.md, and the src/
+     layout to learn what this project actually is.
+  2. Ask the user anything still unclear: target users, key external
+     services, domain vocabulary, deployment target, definition of done.
+  3. Fill in the placeholders below and expand "Project-specific notes"
+     with anything a future agent must know (conventions, gotchas, links).
+  4. Delete this comment block when done.
+Keep this file short. Detail belongs in the instruction tree, not here.
+-->
 **Primary framework(s):**  _(e.g. Actix, FastAPI, Next.js, Embassy)_
 **Key external services:** _(databases, APIs, queues, hardware)_
 **Domain glossary:**       _(terms a new agent must know)_
+**Deployment target:**     _(where and how this runs)_
+
+### Project-specific notes
+_(Agent: expand on first run. Empty until then.)_
 <!-- BOOTSTRAP:END -->
 
 ## Stack
@@ -14,45 +30,25 @@
 
 ## Project conventions — read before editing
 
-Read the files in `{{ ai_folder }}/instructions/`. They are authoritative
-— if anything in this file conflicts, they win.
+Rules live in `{{ ai_folder }}/instructions/`. Start from the README index
+in each relevant folder, then load detail files on demand. The instruction
+files are authoritative: if this file conflicts, they win.
 
-**General (always):**
+Index files:
 
-- `general/coding-conventions.md` — language-agnostic style and idioms
-- `general/architecture.md` — DDD layering rules
-- `general/ddd.md` — domain modelling
-- `general/tdd.md` — test-driven micro-implementation
-- `general/testing.md` — what / where / how to test
-- `general/security.md` — security posture
-{% if 'python' in languages %}
-**Python (when touching Python):**
-
-- `python/zen.md`, `python/style.md`, `python/tooling.md` (uv, ruff, mypy, pytest)
-- `python/design.md`, `python/patterns.md`, `python/code-smells.md`
-- `python/testing.md`
-{% endif %}{% if 'rust' in languages %}
-**Rust (when touching Rust):**
-
-- `rust/style.md`, `rust/tooling.md` (cargo, clippy, rustfmt)
-- `rust/design.md`, `rust/patterns.md`, `rust/code-smells.md`
-- `rust/testing.md`
-{% endif %}{% if 'typescript' in languages %}
-**TypeScript (when touching TS):**
-
-- `typescript/style.md`, `typescript/tooling.md` (npm/pnpm, tsc, Biome, Vitest)
-- `typescript/design.md`, `typescript/patterns.md`, `typescript/code-smells.md`
-- `typescript/testing.md`
-{% endif %}{% if 'cpp' in languages %}
-**C/C++ (when touching C/C++):**
-
-- `cpp/style.md`, `cpp/tooling.md` (CMake presets, vcpkg/Conan, sanitisers)
-- `cpp/design.md`, `cpp/patterns.md`, `cpp/code-smells.md`
-- `cpp/testing.md`
+- `general/README.md` (always)
+{% if 'python' in languages %}- `python/README.md` (Python)
+{% endif %}{% if 'rust' in languages %}- `rust/README.md` (Rust)
+{% endif %}{% if 'typescript' in languages %}- `typescript/README.md` (TypeScript)
+{% endif %}{% if 'cpp' in languages %}- `cpp/README.md` (C/C++)
 {% endif %}
+Load `general/coding-conventions.md` and `general/architecture.md` first;
+load `ddd.md`, `tdd.md`, and the language detail files as the work needs.
+
 ## Working style
 
-- **Micro-implementation is test-driven** (red-green-refactor). See `general/tdd.md`.
+{% if use_spec_kit %}- **Features start with a spec** (SDD): spec → plan → tasks, then implement. See `general/sdd.md`; `just sdd-init` installs spec-kit.
+{% endif %}- **Micro-implementation is test-driven** (red-green-refactor). See `general/tdd.md`.
 - **Design is DDD**: ubiquitous language, layering, pure domain. See `general/ddd.md`.
 {% if 'python' in languages %}- **Python runs through `uv`** — never `python`, `pip`, `poetry` directly.
 {% endif %}- See `{{ ai_folder }}/skills/` and `{{ ai_folder }}/agents/` for invokable
@@ -68,7 +64,10 @@ src/presentation/     Entry points (HTTP routers, CLI, ISRs)
 tests/{unit,integration,e2e,performance}
 ```
 
-Empty directories are prefixed with `_` until they receive their first file.
+Each layer ships with a `README.md` explaining what belongs inside. The
+canonical home of every artifact is the "Where things live" table in
+`{{ ai_folder }}/instructions/general/architecture.md`. Do not create
+new top-level folders.
 
 ## MCP servers
 

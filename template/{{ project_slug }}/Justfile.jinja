@@ -135,3 +135,25 @@ refactor FILE:
     @echo ""
     @echo "Then read the file:"
     @echo "  {{ '{{FILE}}' }}"
+{% if use_spec_kit %}
+# --- Spec-Driven Development (spec-kit) ---
+# Install spec-kit's slash commands into this project (one time; re-run to
+# upgrade). Pulls the current spec-kit from GitHub. After it runs, the
+# /speckit.* commands are available to your agent and spec-kit's skills
+# land in .claude/skills/speckit-* alongside the scaffolder's vendored
+# skills. See the SDD guide at {{ ai_folder }}/instructions/general/sdd.md
+sdd-init:
+    uvx --from git+https://github.com/github/spec-kit.git specify init --here{% if ai_agent in ['claude', 'copilot'] %} --ai {{ ai_agent }}{% else %} --ai claude{% endif %} --integration-options "--skills" --force
+
+# --- Project skills ---
+# Show the YAML frontmatter of each vendored / project-local skill so you
+# can see at a glance which skills will be auto-suggested to the agent.
+skills-list:
+    @find {{ ai_folder }}/skills -name SKILL.md -print -exec head -5 {} \; -exec echo "" \;
+{% else %}
+# --- Project skills ---
+# Show the YAML frontmatter of each vendored / project-local skill so you
+# can see at a glance which skills will be auto-suggested to the agent.
+skills-list:
+    @find {{ ai_folder }}/skills -name SKILL.md -print -exec head -5 {} \; -exec echo "" \;
+{% endif %}

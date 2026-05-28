@@ -108,6 +108,19 @@ include_vscode:
   help: "Include shared .vscode/ editor settings + extension recommendations?"
   default: true
 
+use_spec_kit:
+  type: bool
+  help: |
+    Set up Spec-Driven Development (SDD) via GitHub spec-kit?
+    Adds a `just sdd-init` recipe. When you run it, spec-kit installs its
+    own slash commands (/speckit.constitution, /speckit.specify, /speckit.plan,
+    /speckit.tasks, /speckit.implement) and creates .specify/ + specs/<feature>/
+    natively. SDD sits ABOVE DDD + TDD: spec -> plan -> tasks -> implement,
+    where implement uses DDD to model and TDD to build. Opt in if you want
+    spec-kit's full audit trail; leave off and use the vendored writing-plans
+    skill for lighter planning.
+  default: false
+
 include_brainstorming:
   type: bool
   help: |

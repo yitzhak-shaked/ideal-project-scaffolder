@@ -1,0 +1,90 @@
+# Spec-Driven Development (SDD)
+
+This project uses **Spec-Driven Development** via
+[GitHub spec-kit](https://github.com/github/spec-kit). SDD makes the
+*specification* the durable source of truth: you write down what you're
+building and why, turn that into a technical plan, break the plan into
+tasks, and only then implement. The spec outlives any single coding
+session and keeps both humans and agents from drifting.
+
+## Where SDD sits relative to DDD and TDD
+
+These three are layers of the same pipeline, not competitors:
+
+```
+SDD   →  WHAT & WHY    spec → plan → tasks         (this file + spec-kit)
+DDD   →  HOW (model)   aggregates, value objects,  (general/ddd.md)
+                       layering, ubiquitous language
+TDD   →  HOW (build)   red → green → refactor,     (general/tdd.md)
+                       one task at a time
+```
+
+- **SDD** is the front of the funnel. It produces a precise spec, a plan,
+  and an ordered task list.
+- **DDD** is how you *design* each task's solution — the domain model,
+  the layering, the value objects.
+- **TDD** is how you *implement* each task — a failing test first, then
+  the code.
+
+So the full loop for a feature is:
+`/speckit.specify` → `/speckit.plan` → `/speckit.tasks` → for each task:
+**model with DDD → build with TDD**.
+
+## The spec-kit workflow
+
+Once installed (see "Setup" below), your agent gains these slash commands:
+
+| Command | Purpose |
+| --- | --- |
+| `/speckit.constitution` | Establish the project's non-negotiable principles. |
+| `/speckit.specify` | Describe *what* to build and *why* (not how). Creates `specs/NNN-feature/spec.md`. |
+| `/speckit.clarify` | Resolve ambiguities in the spec before planning. |
+| `/speckit.plan` | Establish the technical approach. Creates `plan.md`, `data-model.md`, `contracts/`, etc. |
+| `/speckit.tasks` | Break the plan into an ordered, reviewable task list (`tasks.md`). |
+| `/speckit.analyze` | Cross-check spec ↔ plan ↔ tasks for gaps and contradictions. |
+| `/speckit.implement` | Execute the tasks. **This is where DDD + TDD apply.** |
+
+Artifacts land under `specs/NNN-feature-name/`.
+
+## The constitution — point it at this instruction tree
+
+spec-kit's `/speckit.constitution` writes
+`.specify/memory/constitution.md`: the immutable principles every spec and
+implementation must honour. **Do not duplicate our rules there.** This
+project already has its governing principles in the instruction tree —
+make the constitution *reference* them:
+
+- Architecture & layering → `general/architecture.md`
+- Domain modelling → `general/ddd.md`
+- Test-driven micro-implementation → `general/tdd.md`
+- Coding conventions → `general/coding-conventions.md`
+- Language specifics → `<language>/` (e.g. `python/`)
+
+A good constitution for this project is short: "Follow the principles in
+`{{ ai_folder }}/instructions/`. Specs must be implementable within the
+DDD layering. Every task is built test-first." Then add anything truly
+project-specific.
+
+## Setup
+
+Install spec-kit's slash commands into this project (one time):
+
+```sh
+just sdd-init
+```
+
+That runs spec-kit's initializer for your agent. After it finishes, the
+slash commands above are available, and a `.specify/` directory appears
+with templates and the constitution. Commit `.specify/` and `specs/`.
+
+> spec-kit is an external, actively-maintained tool. We deliberately do
+> **not** vendor its templates here — `just sdd-init` always pulls the
+> current version. Re-run it to upgrade.
+
+## When to use SDD vs. just doing the work
+
+- **Use the full SDD loop** for net-new features, anything with real
+  ambiguity, or work that several people / sessions will touch.
+- **Skip straight to DDD + TDD** for small, well-understood changes and
+  bug fixes — writing a one-line spec for a typo fix is ceremony. Use
+  judgement; SDD is a tool, not a tax.

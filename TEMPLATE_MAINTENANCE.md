@@ -197,6 +197,15 @@ to rerun. The hook no longer does the underscore-prefix rename that older
 versions did; DDD folders (`src/domain/`, etc.) ship with explanatory
 `README.md` files so they're never empty.
 
+## Canonical artifact locations
+
+The rendered project's `{{ ai_folder }}/instructions/general/architecture.md`
+has a "Where things live" table that names a canonical home for every
+markdown artifact (plans, specs, design notes, etc.) and forbids creating
+new top-level folders. This is the single durable convention rule. Don't
+duplicate it in `CLAUDE.md` / `AGENTS.md` — keep that file's "Source
+layout" section a one-paragraph pointer back to `architecture.md`.
+
 ## Testing changes
 
 After editing the template, smoke-test renders into temp directories:
@@ -210,4 +219,9 @@ Diff the outputs against expectations. Things worth checking:
 
 - `src/{domain,application,infrastructure,presentation}/README.md` exist
   and are not empty.
+- `.claude/settings.json` is present (Claude / Universal renders).
+- `.claude/skills/` (or `.ai/skills/`) contains the Tier-1 skills plus
+  whichever Tier-2 skills the quiz answers selected.
 - No `.cursorrules` is ever produced.
+- No `specs/` is pre-rendered; `just sdd-init` is what creates it when
+  `use_spec_kit` is true.

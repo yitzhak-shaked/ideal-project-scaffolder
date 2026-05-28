@@ -12,14 +12,21 @@ in a specific language, also load the matching set under
 | `tdd.md` | Whenever you're about to write or change behaviour. The red-green-refactor workflow and what makes a test valuable. |
 | `testing.md` | Whenever you're authoring or running tests. Where each kind of test lives and what to test. |
 | `security.md` | Whenever input crosses a boundary, secrets are handled, or auth is involved. |
-
+{% if use_spec_kit %}| `sdd.md` | When starting a feature. Spec-Driven Development — how spec → plan → tasks sits above DDD + TDD. |
+{% endif %}
 ## Reading order for a new contributor (human or agent)
 
-1. `architecture.md` — the layout you're slotting into.
+{% if use_spec_kit %}1. `sdd.md` — the spec → plan → tasks workflow that frames everything below.
+2. `architecture.md` — the layout you're slotting into.
+3. `ddd.md` — the modelling vocabulary the rest of the docs use.
+4. `coding-conventions.md` — the baseline rules.
+5. `tdd.md` and `testing.md` — how we work.
+6. `security.md` — the boundary rules.
+{% else %}1. `architecture.md` — the layout you're slotting into.
 2. `ddd.md` — the modelling vocabulary the rest of the docs use.
 3. `coding-conventions.md` — the baseline rules.
 4. `tdd.md` and `testing.md` — how we work.
 5. `security.md` — the boundary rules.
-
+{% endif %}
 After that, jump to the language-specific subfolder for the language you're
 about to touch.

@@ -85,6 +85,24 @@ you do this, `claude mcp list` will only show your account-level
 - `Justfile`, `.gitignore`, `.env.example`, optional `.github/workflows/ci.yml`,
   and `.vscode/` settings.
 
+## Optional: Spec-Driven Development
+
+If you answered "yes" to **Use Spec-Driven Development (SDD) via
+GitHub spec-kit?** during the questionnaire, the rendered Justfile
+ships a `sdd-init` recipe. Run it once to overlay spec-kit's slash
+commands and `.specify/` infrastructure:
+
+```sh
+just sdd-init
+```
+
+This installs spec-kit's CLI and runs `specify init --here --ai <agent>
+--integration-options "--skills"`, which lands the `/speckit.*` commands
+and `speckit-*` skills inside `.claude/skills/` alongside the vendored
+superpowers skills. spec-kit creates `.specify/memory/constitution.md`
+and `specs/<feature>/` natively; the scaffolder does not pre-render
+either.
+
 ## Extending the template
 
 See [TEMPLATE_MAINTENANCE.md](TEMPLATE_MAINTENANCE.md) for how to add a new
