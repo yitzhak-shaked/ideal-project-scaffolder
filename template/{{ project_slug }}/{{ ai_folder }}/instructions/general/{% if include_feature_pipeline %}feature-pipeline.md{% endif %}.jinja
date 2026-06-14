@@ -1,0 +1,83 @@
+---
+# Feature pipeline runtime configuration — read at the start of every run.
+# This is the single switchboard for the pipeline; edit it per project.
+spec_kit: {{ 'true' if use_spec_kit else 'false' }}   # use spec-kit's /speckit.* for the spec phase?
+loop_bound: 3            # max implement<->verify iterations before escalating to the user
+plan_grill: false        # also grill the plan (phase 5b) for architecturally-risky work?
+security_gate: false     # run a security review before the approval gate for auth/network/secret changes?
+---
+
+# Feature pipeline
+
+The repeatable path from idea to committed change for this project. Driven by
+the {% if ai_agent in ['claude', 'universal'] %}`/feature` command (`.claude/commands/feature.md`){% else %}orchestration described here (paste-driven for this agent){% endif %}.
+
+```
+brainstorm -> spec -> grill -> plan -> TDD implement <-> verify  (hard gate)
+   -> review -> ★ USER APPROVAL ★ -> document -> commit
+```
+
+**Two prime rules:** (1) you are prompted only for *questions* and the single
+approval gate — not to authorise routine commands; (2) the test/implementation
+hard gate is sacred (below).
+
+## Phase map
+
+| # | Phase | Who | Skill / instruction | Output |
+|---|-------|-----|---------------------|--------|
+| 1 | Brainstorm | main thread | {% if include_brainstorming %}`skills/brainstorming`{% else %}`skills/grilling` (light){% endif %} | design notes in `docs/design/<slug>.md` |
+| 2 | Spec | main thread | see "Spec phase" below | the spec (location per `spec_kit`) |
+| 3 | Grill the spec | main thread | `skills/grilling` | hardened spec + ADR/design-note updates |
+| 4 | Finalize spec | main thread | self-review | final spec |
+| 5 | Plan (Design-Driven) | `ddd-architect` subagent | `skills/writing-plans` + `instructions/general/ddd.md` | `docs/plans/<date>-<slug>.md` (interfaces, types, module boundaries, steps) |
+| 5b | Grill the plan *(optional)* | main thread | `skills/grilling` | only if `plan_grill: true` |
+| 6 | TDD implement <-> verify | `test-writer` → lock → `implementer` ⇄ `verifier` (→ `debugger`) | `skills/test-driven-development`, `skills/tdd-cycle`, `skills/systematic-debugging` | tests + code, `just test`/`just lint` green |
+| 7 | Review | `code-reviewer` subagent | `skills/requesting-code-review` | APPROVE / CHANGES vs acceptance criteria |
+| 8 | **USER APPROVAL** | main thread | — | the one hard stop |
+| 9 | Document | `documenter` subagent | `skills/update-changelog` | `docs/manual/<slug>.md` + updated docs |
+| 10 | Commit | main thread | — | local commit referencing spec + plan |
+
+Interactive phases (1–4, 5b, 8) stay in the main thread (full reasoning trace +
+the user). Mechanical phases (5, 6, 7, 9) are subagents anchored to the
+artifacts. The reviewer is a single judge, not a debate panel.
+
+## Spec phase (respects `spec_kit`)
+
+- **`spec_kit: true`** — use spec-kit: `just sdd-init` once, then `/speckit.specify`
+  and `/speckit.plan` write `specs/<slug>/{spec,plan,tasks}.md`. See
+  `{{ ai_folder }}/instructions/general/sdd.md`.
+- **`spec_kit: false`** — write the spec to `docs/design/<slug>-spec.md` from
+  the brainstorming/grilling output. Acceptance criteria must be concrete and
+  testable — they are the contract the `test-writer` turns into tests.
+
+## The hard gate (test/implementation separation)
+
+The `test-writer` writes failing tests from the spec. Then the run **locks**
+tests by creating `.pipeline/tests.lock`. While locked, the `implementer` and
+`debugger` **cannot edit test files** —
+{% if ai_agent in ['claude', 'universal'] %}a PreToolUse hook (`.claude/hooks/block-locked-tests.py`) refuses such edits
+(exit 2).{% else %}treat all test files as read-only by convention (this agent has no enforcing
+hook).{% endif %}
+A test believed wrong is escalated to the user, never silently changed. The
+`code-reviewer` confirms tests weren't weakened. After review, the lock is
+removed.
+
+## Loop & escalation
+
+`implementer` ⇄ `verifier` repeats up to `loop_bound` times. First red →
+implementer retries; persistent/regressing red → hand to `debugger`
+(systematic-debugging). On exhaustion, escalate to the user with the failing
+report (a question, not a command prompt).
+
+## Roles → agents (this project)
+
+- planner → **`ddd-architect`**  ·  reviewer → **`code-reviewer`**
+- red → **`test-writer`**  ·  green → **`implementer`**  ·  check → **`verifier`**  ·  debug → **`debugger`**  ·  docs → **`documenter`**
+
+## Artifact locations
+
+Follow the "Where things live" table in
+`{{ ai_folder }}/instructions/general/architecture.md`. Pipeline-specific:
+spec (per `spec_kit`), plan → `docs/plans/`, design notes → `docs/design/`,
+per-feature doc → `docs/manual/`, runtime state → `.pipeline/` (gitignored).
+Test/lint always run through `just test` / `just lint`.

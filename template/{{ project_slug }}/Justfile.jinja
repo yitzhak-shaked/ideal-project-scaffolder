@@ -135,6 +135,18 @@ refactor FILE:
     @echo ""
     @echo "Then read the file:"
     @echo "  {{ '{{FILE}}' }}"
+{% if include_feature_pipeline %}
+# Start the feature pipeline for a change (brainstorm -> spec -> grill -> plan
+# -> TDD with a hard test/impl gate -> review -> approval -> document -> commit).
+# Usage:  just feature "add refund-when-unpaid validation"
+feature DESCRIPTION:
+{% if ai_agent in ['claude', 'universal'] %}    @echo "Run the pipeline for '{{ '{{DESCRIPTION}}' }}':"
+    @echo "  In Claude Code:  /feature {{ '{{DESCRIPTION}}' }}"
+    @echo "  Playbook:        {{ ai_folder }}/instructions/general/feature-pipeline.md"
+{% else %}    @echo "Run the pipeline for '{{ '{{DESCRIPTION}}' }}' by following the playbook:"
+    @echo "  {{ ai_folder }}/instructions/general/feature-pipeline.md"
+    @echo "  Agents:  {{ ai_folder }}/agents/ (test-writer, implementer, verifier, debugger, documenter)"
+{% endif %}{% endif %}
 {% if use_spec_kit %}
 # --- Spec-Driven Development (spec-kit) ---
 # Install spec-kit's slash commands into this project (one time; re-run to

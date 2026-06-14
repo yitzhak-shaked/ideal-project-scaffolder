@@ -5,5 +5,73 @@
     "claude-md-management@claude-plugins-official": false,
     "claude-code-setup@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": false
-  }
+  }{% if include_feature_pipeline %},
+  "_permissions_comment": "Feature pipeline (R3): prompt only for QUESTIONS, not routine commands. Tests, linters, formatters, and local git auto-run; genuinely risky commands stay in `ask`.",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(just:*)",
+{% if 'python' in languages %}      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run mypy:*)",
+      "Bash(uv sync:*)",
+{% endif %}{% if 'rust' in languages %}      "Bash(cargo test:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+{% endif %}{% if 'cpp' in languages %}      "Bash(ctest:*)",
+      "Bash(cmake:*)",
+      "Bash(clang-tidy:*)",
+      "Bash(clang-format:*)",
+{% endif %}{% if 'typescript' in languages %}      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+{% endif %}      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout -b:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm:*)",
+      "Bash(pip install:*)",
+      "Bash(cargo publish:*)",
+      "Bash(npm publish:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "WebFetch"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-locked-tests.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/autoformat.py\""
+          }
+        ]
+      }
+    ]
+  }{% endif %}
 }

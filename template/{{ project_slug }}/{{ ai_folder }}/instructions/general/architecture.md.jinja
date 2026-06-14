@@ -88,6 +88,9 @@ rather than inventing parallel ones.
 | API reference docs | `docs/api/` | Generators or hand-written |
 | Long-form architecture docs | `docs/architecture/` | Hand-written |
 | User-facing manual | `docs/manual/` | Hand-written |
+{% if include_feature_pipeline %}| Per-feature doc (pipeline) | `docs/manual/<slug>.md` | The `documenter` agent |
+| Pipeline runtime state | `.pipeline/` (gitignored) | The `/feature` orchestrator |
+{% endif %}
 
 **Do not create new top-level folders.** Reuse the entries above. If an
 artifact genuinely does not fit any row, propose adding a new row to this

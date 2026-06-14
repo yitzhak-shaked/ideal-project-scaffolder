@@ -82,3 +82,7 @@ pnpm-debug.log*
 
 # --- Agent / scaffolding ---
 .copier-answers.yml.bak
+{% if include_feature_pipeline %}
+# --- Feature pipeline runtime state ---
+.pipeline/
+{% endif %}

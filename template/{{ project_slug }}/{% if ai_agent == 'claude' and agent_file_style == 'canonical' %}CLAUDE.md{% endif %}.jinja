@@ -52,6 +52,9 @@ covers what.
 {% if use_spec_kit %}- **Features start with a spec** (SDD): spec → plan → tasks, then
   implement. See `general/sdd.md`; run `just sdd-init` once to install
   spec-kit's `/speckit.*` commands.
+{% endif %}{% if include_feature_pipeline %}- **Features run through the pipeline.** `/feature <idea>` drives brainstorm →
+  spec → grill → plan → TDD (with a hard test/implementation gate) → review →
+  one approval → document → commit (`general/feature-pipeline.md`).
 {% endif %}- **Micro-implementation is test-driven.** Write a failing test before the
   code that makes it pass (`general/tdd.md`; the `tdd-cycle` skill).
 - **Design is DDD.** Ubiquitous language, layered, pure domain
@@ -111,6 +114,7 @@ No MCP servers preconfigured. Add some to `.mcp.json` if needed.
   available; `just convention <lang>` prints the files to load.
 - Project skills: `{{ ai_folder }}/skills/` — `tdd-cycle`, `design-review`,
   `refactor-code-smell`, `lint-and-format`, `run-tests`,
-  `update-changelog`{% if 'python' in languages %}, `python-uv-setup`{% endif %}.
+  `update-changelog`{% if include_feature_pipeline %}, `grilling`{% endif %}{% if 'python' in languages %}, `python-uv-setup`{% endif %}.
 - Project subagents: `{{ ai_folder }}/agents/` — `code-reviewer`,
-  `ddd-architect`, `tdd-driver`{% if 'python' in languages %}, `python-refactorer`{% endif %}.
+  `ddd-architect`, {% if include_feature_pipeline %}`test-writer`, `implementer`, `verifier`, `debugger`, `documenter`{% else %}`tdd-driver`{% endif %}{% if 'python' in languages %}, `python-refactorer`{% endif %}.{% if include_feature_pipeline %}
+- Feature pipeline: `/feature <idea>` (orchestrator) + `general/feature-pipeline.md` (playbook).{% endif %}

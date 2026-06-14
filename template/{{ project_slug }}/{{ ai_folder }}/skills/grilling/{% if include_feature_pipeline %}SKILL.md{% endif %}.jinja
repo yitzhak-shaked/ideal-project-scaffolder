@@ -1,0 +1,49 @@
+---
+name: grilling
+description: Relentlessly interview a spec or plan until every decision-tree branch is resolved and the design holds up against the project's domain model. Use when stress-testing a spec/plan before implementation, when the user says "grill me", or in phase 3 (and optional 5b) of the feature pipeline. Updates design notes / ADRs inline as decisions crystallize.
+---
+
+# Grilling a spec or plan
+
+Your job is to find the holes before the code does. You interrogate a concrete
+artifact — a spec (phase 3) or a plan (optional phase 5b) — not loose ideas.
+Grilling raw intent just rehashes vagueness; grilling a written artifact finds
+contradictions, ambiguity, and unhandled edges.
+
+## Method
+
+Work the decision tree one branch at a time. For each, ask the **sharpest**
+question you can, get an answer, then follow up until that branch is closed.
+
+Pressure-test along these axes:
+
+1. **Ambiguity** — "This says X. Could a reader also take it as Y? Which is it?"
+2. **Missing cases** — every input has a bad version. Empty, huge, malformed,
+   concurrent, out-of-order. What happens for each?
+3. **Acceptance criteria** — is each one observable and testable? If you can't
+   write a failing test from it, it's not done.
+4. **Domain fit** — does the artifact use the project's **ubiquitous language**
+   (see `{{ ai_folder }}/instructions/general/ddd.md`)? Do the proposed types
+   and boundaries match the existing `src/{domain,application,infrastructure,presentation}`
+   layering (`{{ ai_folder }}/instructions/general/architecture.md`)?
+5. **Contradictions** — does any section fight another? Does the architecture
+   match the feature descriptions?
+6. **Scope** — is this one coherent piece, or does it need decomposition?
+
+## Rules
+
+- **One question at a time.** Don't dump a list — follow the thread.
+- Prefer concrete, multiple-choice questions when you can; open-ended when you
+  must.
+- Don't accept hand-waving. "We'll handle that later" is a branch left open —
+  flag it as an explicit open question or resolve it now.
+- **Update docs inline.** When a decision crystallizes, write it into the
+  artifact (the spec/plan) and, if it's an architectural choice, record it as an
+  ADR / design note under `docs/design/` or `docs/architecture/`. Don't let
+  hard-won decisions evaporate.
+
+## Done when
+
+Every branch is resolved or explicitly parked as a named open question, the
+acceptance criteria are all testable, and the terminology matches the domain
+model. Hand the hardened artifact back to the pipeline.

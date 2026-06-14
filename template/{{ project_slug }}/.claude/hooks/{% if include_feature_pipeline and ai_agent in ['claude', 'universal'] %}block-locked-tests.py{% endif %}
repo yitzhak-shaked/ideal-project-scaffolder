@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""PreToolUse guard enforcing the feature pipeline's test/implementation gate.
+
+The /feature orchestrator creates ``<project>/.pipeline/tests.lock`` before the
+implementer runs and removes it after review. While that lock exists, no
+Edit / Write / MultiEdit may touch a test file. Blocking is done by exiting
+with code 2, which refuses the tool call and feeds stderr back to the agent.
+
+Path-based, so it covers separate test files (a ``tests/`` directory,
+``*_test.rs``, ``test_*.py`` ...). It cannot see Rust ``#[cfg(test)]`` modules
+embedded in ``src/`` files — the code-reviewer catches weakened inline tests.
+"""
+import json
+import os
+import sys
+from fnmatch import fnmatch
+
+TEST_DIR_NAMES = {"tests", "test", "__tests__"}
+TEST_FILE_GLOBS = (
+    "test_*.py", "*_test.py", "conftest.py",
+    "*_test.rs",
+    "*_test.go",
+    "*.test.*", "*.spec.*",
+    "*_test.c", "*_test.cc", "*_test.cpp", "*_test.cxx",
+    "*_test.h", "*_test.hpp",
+    "*Test.*", "*Tests.*",
+)
+
+
+def read_payload():
+    try:
+        return json.load(sys.stdin)
+    except Exception:
+        return {}
+
+
+def project_dir(payload):
+    return os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()
+
+
+def target_path(payload):
+    tool_input = payload.get("tool_input") or {}
+    return tool_input.get("file_path") or tool_input.get("path") or ""
+
+
+def is_test_path(path):
+    norm = path.replace("\\", "/")
+    parts = norm.split("/")
+    if any(part in TEST_DIR_NAMES for part in parts[:-1]):
+        return True
+    base = parts[-1]
+    return any(fnmatch(base, glob) for glob in TEST_FILE_GLOBS)
+
+
+def main():
+    payload = read_payload()
+    lock = os.path.join(project_dir(payload), ".pipeline", "tests.lock")
+    if not os.path.exists(lock):
+        sys.exit(0)  # not inside a locked implementation phase
+
+    path = target_path(payload)
+    if not path:
+        sys.exit(0)
+
+    if is_test_path(path):
+        sys.stderr.write(
+            "BLOCKED by the feature pipeline hard gate: tests are locked during "
+            "implementation. Make the production code pass the existing tests; "
+            "do not edit them. If a test is genuinely wrong, stop and report it "
+            "to the orchestrator so it can ask the user. "
+            f"(target: {path})\n"
+        )
+        sys.exit(2)
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

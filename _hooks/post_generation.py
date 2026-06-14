@@ -67,6 +67,13 @@ def has_any_file(directory: Path) -> bool:
 # selected, only the sentinel remains and the whole dir is pruned here.
 OPTIONAL_PARENT_DIRS = {"instructions", "skills"}
 
+# Directories whose entire contents are feature-gated (e.g. the feature
+# pipeline's `.claude/commands/` and `.claude/hooks/`). When the gate is off —
+# or the agent target isn't Claude — every file inside skips and the directory
+# is left as a hollow shell. Prune it. Matched by directory name anywhere in
+# the tree.
+PRUNE_IF_EMPTY_DIRS = {"commands", "hooks"}
+
 
 def prune_empty_optional_dirs(root: Path) -> None:
     # Bottom-up so a pruned child can let its parent be pruned too.
@@ -103,6 +110,21 @@ def prune_skill_dirs_missing_skill_md(root: Path) -> None:
                 shutil.rmtree(child)
 
 
+def prune_named_empty_dirs(root: Path) -> None:
+    # Bottom-up so a freshly-emptied dir is seen as empty by its parent.
+    for current_root, dir_names, _ in os.walk(root, topdown=False):
+        current = Path(current_root)
+        rel_parts = current.relative_to(root).parts
+        if rel_parts and rel_parts[0] == ".git":
+            continue
+        for dir_name in dir_names:
+            if dir_name not in PRUNE_IF_EMPTY_DIRS:
+                continue
+            child = current / dir_name
+            if child.is_dir() and not has_any_file(child):
+                shutil.rmtree(child)
+
+
 def prune_empty_hidden_top_level_dirs(root: Path) -> None:
     # Top-level dotted dirs (.claude, .github, .vscode, .ai...) exist because
     # a path under them was templated. If the conditional skipped every leaf,
@@ -128,6 +150,7 @@ def main() -> int:
         return 2
     prune_skill_dirs_missing_skill_md(root)
     prune_empty_optional_dirs(root)
+    prune_named_empty_dirs(root)
     strip_gitkeeps_from_populated_dirs(root)
     prune_empty_hidden_top_level_dirs(root)
     return 0

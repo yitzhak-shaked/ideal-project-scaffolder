@@ -129,6 +129,19 @@ include_brainstorming:
     jumping straight to code.
   default: true
 
+include_feature_pipeline:
+  type: bool
+  help: |
+    Install the feature-generation pipeline: a /feature orchestrator that
+    drives brainstorm -> spec -> grill -> plan -> TDD implement (with a hard
+    test/implementation gate) -> review -> ONE user-approval -> document ->
+    commit. Adds split role subagents (test-writer, implementer, verifier,
+    debugger, documenter), a grilling skill, a playbook, and (for Claude)
+    PreToolUse hooks that block edits to test files during implementation so
+    tests can't be gamed. When on, it replaces the single tdd-driver agent
+    with the split set. Leave off for a lighter setup that keeps tdd-driver.
+  default: true
+
 enable_worktrees:
   type: bool
   help: |

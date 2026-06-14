@@ -117,6 +117,8 @@ Three mechanisms cooperate to keep the layout intact:
      associated language / skill was not selected).
    - Deletes half-rendered skill directories that lost their `SKILL.md`
      to a conditional but kept support files.
+   - Deletes named gated directories (`commands/`, `hooks/`) left empty
+     because the feature pipeline was off or the agent target wasn't Claude.
    - Prunes top-level hidden directories (`.claude/`, `.github/`, `.ai/`)
      that ended up hollow because every conditional inside them skipped.
 
@@ -164,6 +166,49 @@ agent can never legitimately put feature specs anywhere else.
 When `use_spec_kit` is off, the lighter vendored `writing-plans` skill
 covers tactical planning (output → `docs/plans/YYYY-MM-DD-<slug>.md`).
 
+## Feature pipeline (`include_feature_pipeline`)
+
+On by default. Emits an end-to-end feature/bug workflow into the rendered
+project: brainstorm → spec → grill → plan → TDD implement (with a hard
+test/implementation gate) → review → one user-approval → document → commit.
+
+It is built on the same closed-world principle as the rest of the scaffold —
+agents reach their guidance through the project's own `{{ ai_folder }}/
+instructions/` and vendored `{{ ai_folder }}/skills/` (referenced by directory
+name, never a global plugin namespace), so the workflow is identical regardless
+of the user's global plugin setup.
+
+How the parts map onto the architecture:
+
+- **Orchestration** is a slash command (`.claude/commands/feature.md`) for
+  Claude/Universal. Copilot renders get the playbook doc only — no command, no
+  hooks (its CLI can't drive them). This is the same "Claude-first, degrade
+  gracefully" rule as the agent matrix.
+- **Roles** are split subagents (`test-writer`, `implementer`, `verifier`,
+  `debugger`, `documenter`) plus the reused `ddd-architect` (planner) and
+  `code-reviewer` (reviewer). When the pipeline is on, `tdd-driver` is gated
+  **off** (filename `{% raw %}{% if not include_feature_pipeline %}…{% endif %}{% endraw %}`)
+  because the split set supersedes it.
+- **The hard gate** is a project hook (`.claude/hooks/block-locked-tests.py`,
+  PreToolUse): while `.pipeline/tests.lock` exists, any edit to a test file is
+  refused (exit 2), so the implementer can't weaken the test-writer's tests to
+  go green. Registered via the `hooks` block in `.claude/settings.json`, which
+  in pipeline mode also carries a `permissions` allowlist so routine commands
+  (`just test`, formatters, local git) never prompt — only risky ones do.
+- **Config** lives in the playbook's YAML front-matter
+  (`instructions/general/feature-pipeline.md`): `spec_kit` (seeded from
+  `use_spec_kit`), `loop_bound`, `plan_grill`, `security_gate`. Per-project,
+  editable after render.
+
+The same pipeline ships as the standalone `ideal-workflow` Claude Code plugin.
+**The template is canonical**; `scripts/sync-plugin.py` renders the pipeline's
+agent + hook files into the plugin (rewriting skill-paths → global skill names,
+the instruction tree → `CONSTITUTION.md`, `just` → generic commands) and stamps
+a "GENERATED — do not hand-edit" banner on each. Run it after editing the
+template; `--check` flags drift for CI. Plugin-specific files (the orchestrator
+command, `planner`/`reviewer` agents, `CONSTITUTION.md`, `templates/`) have no
+1:1 template source and are edited in the plugin directly.
+
 ## Rejected alternatives
 
 - **Post-generation calls the chosen CLI agent to mutate config.**
@@ -193,6 +238,7 @@ TEMPLATE_MAINTENANCE.md             # How to extend (per-task playbook)
 docs/ARCHITECTURE.md                # This file — design rationale
 _hooks/post_generation.py           # Render-time tree-cleaning hook
 scripts/refresh-vendored-skills.py  # Pull upstream superpowers @ pinned tag
+scripts/sync-plugin.py              # Render feature-pipeline files into the standalone plugin
 template/{{ project_slug }}/        # Everything below is rendered into the new project
 ```
 
@@ -204,10 +250,12 @@ Inside `template/{{ project_slug }}/`:
 .vscode/mcp.json.jinja                         # Same, for Copilot
 .github/copilot-instructions.md.jinja          # Copilot canonical agent file
 .github/workflows/ci.yml.jinja                 # Optional starter CI
+.claude/commands/feature.md.jinja              # Feature-pipeline orchestrator (gated; Claude/universal)
+.claude/hooks/{block-locked-tests,autoformat}.py  # Pipeline hooks (gated; Claude/universal)
 AGENTS.md.jinja                                # Universal / generic-style agent file
 CLAUDE.md.jinja                                # Claude canonical agent file
-Justfile.jinja                                 # Task runner + agent helpers + sdd-init
-{{ ai_folder }}/agents/                        # Subagent definitions
+Justfile.jinja                                 # Task runner + agent helpers + sdd-init + feature
+{{ ai_folder }}/agents/                        # Subagent definitions (incl. gated pipeline roles)
 {{ ai_folder }}/instructions/general/          # Language-agnostic rules (always loaded)
 {{ ai_folder }}/instructions/<lang>/           # Per-language rules (filename-gated)
 {{ ai_folder }}/skills/                        # Vendored Tier-1 + Tier-2 + project-local

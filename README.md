@@ -71,6 +71,16 @@ you do this, `claude mcp list` will only show your account-level
   debugging, verification, writing/executing plans, code-review,
   optionally brainstorming and worktree/parallel-agent skills — plus
   project-local task skills), and `agents/` (subagent definitions).
+- **(Optional) A feature-generation pipeline** (on by default; toggle
+  `include_feature_pipeline`). A `/feature` orchestrator drives
+  brainstorm → spec → grill → plan → TDD implement → review → one
+  user-approval → document → commit, with split role subagents
+  (`test-writer`, `implementer`, `verifier`, `debugger`, `documenter`),
+  a `grilling` skill, a playbook at
+  `instructions/general/feature-pipeline.md`, and — for Claude —
+  PreToolUse hooks that block edits to test files during implementation
+  so tests can't be gamed. When on, it replaces the single `tdd-driver`
+  agent with the split set.
 - A preconfigured `.mcp.json` (or `.vscode/mcp.json`) with the MCP servers
   you selected.
 - A project-scope `.claude/settings.json` that silences globally-installed
