@@ -1,0 +1,49 @@
+name: sync-check
+
+# Guards against orchestrator/agent/hook drift between this template (canonical)
+# and the standalone `ideal-workflow` plugin. Fails if the rendered output does
+# not match what is committed in the plugin repo — re-run the sync to fix.
+#
+# Requires the plugin repo to be reachable. Set the repo var PLUGIN_REPO to the
+# `owner/name` of the plugin repository (defaults below). If the plugin is not on
+# a remote yet, this workflow is a no-op stub — run the local check instead:
+#   uv run --with jinja2 python scripts/sync-plugin.py --check --plugin-dir ../ideal-workflow
+
+on:
+  push:
+    paths:
+      - "template/**"
+      - "scripts/sync-plugin.py"
+      - ".github/workflows/sync-check.yml"
+  pull_request:
+    paths:
+      - "template/**"
+      - "scripts/sync-plugin.py"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout scaffolder (canonical)
+        uses: actions/checkout@v4
+        with:
+          path: scaffolder
+
+      - name: Checkout ideal-workflow plugin
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.PLUGIN_REPO || 'shake/ideal-workflow' }}
+          path: ideal-workflow
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install jinja2
+        run: pip install jinja2
+
+      - name: Check plugin is in sync with the template
+        working-directory: scaffolder
+        run: python scripts/sync-plugin.py --check --plugin-dir ../ideal-workflow
