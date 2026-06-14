@@ -3,7 +3,7 @@
 # This is the single switchboard for the pipeline; edit it per project.
 spec_kit: {{ 'true' if use_spec_kit else 'false' }}   # use spec-kit's /speckit.* for the spec phase?
 loop_bound: 3            # max implement<->verify iterations before escalating to the user
-plan_grill: false        # also grill the plan (phase 5b) for architecturally-risky work?
+plan_grill: true         # grill the plan (phase 5b) by default; set false (or pass --no-grill-plan) to skip
 security_gate: false     # run a security review before the approval gate for auth/network/secret changes?
 ---
 
@@ -13,7 +13,7 @@ The repeatable path from idea to committed change for this project. Driven by
 the {% if ai_agent in ['claude', 'universal'] %}`/feature` command (`.claude/commands/feature.md`){% else %}orchestration described here (paste-driven for this agent){% endif %}.
 
 ```
-brainstorm -> spec -> grill -> plan -> TDD implement <-> verify  (hard gate)
+brainstorm -> spec -> grill -> plan -> grill plan -> TDD implement <-> verify  (hard gate)
    -> review -> ★ USER APPROVAL ★ -> document -> commit
 ```
 
@@ -30,7 +30,7 @@ hard gate is sacred (below).
 | 3 | Grill the spec | main thread | `skills/grilling` | hardened spec + ADR/design-note updates |
 | 4 | Finalize spec | main thread | self-review | final spec |
 | 5 | Plan (Design-Driven) | `ddd-architect` subagent | `skills/writing-plans` + `instructions/general/ddd.md` | `docs/plans/<date>-<slug>.md` (interfaces, types, module boundaries, steps) |
-| 5b | Grill the plan *(optional)* | main thread | `skills/grilling` | only if `plan_grill: true` |
+| 5b | Grill the plan | main thread | `skills/grilling` | hardened plan — runs by default; skip with `plan_grill: false` or `--no-grill-plan` |
 | 6 | TDD implement <-> verify | `test-writer` → lock → `implementer` ⇄ `verifier` (→ `debugger`) | `skills/test-driven-development`, `skills/tdd-cycle`, `skills/systematic-debugging` | tests + code, `just test`/`just lint` green |
 | 7 | Review | `code-reviewer` subagent | `skills/requesting-code-review` | APPROVE / CHANGES vs acceptance criteria |
 | 8 | **USER APPROVAL** | main thread | — | the one hard stop |
