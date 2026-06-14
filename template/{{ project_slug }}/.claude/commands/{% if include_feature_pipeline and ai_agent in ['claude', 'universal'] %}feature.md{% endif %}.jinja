@@ -1,6 +1,6 @@
 ---
-description: Run the feature pipeline (brainstorm -> spec -> grill -> plan -> TDD implement with a hard test/impl gate -> review -> approval -> document -> commit).
-argument-hint: <idea> | --bug <desc> | --fix <desc> | --quick <idea> | --resume [phase]
+description: Run the feature pipeline (brainstorm -> spec -> grill -> plan -> grill plan -> TDD implement with a hard test/impl gate -> review -> approval -> document -> commit).
+argument-hint: <idea> | --bug <desc> | --fix <desc> | --quick <idea> | --resume [phase] | --no-grill-plan{% if plugin_build | default(false) %} | --init{% endif %}
 ---
 
 # Feature pipeline orchestrator
@@ -10,8 +10,8 @@ the user, and spawn subagents (via the Task tool) only for mechanical phases.
 Artifacts on disk — not agent memory — are the source of truth.
 
 **Read `{{ ai_folder }}/instructions/general/feature-pipeline.md` first.** Honour
-its front-matter config (`spec_kit`, `loop_bound`, `plan_grill`, `security_gate`)
-and its phase map. This command just sequences it.
+its config (`spec_kit`, `loop_bound`, `plan_grill`, `security_gate`) and its phase
+map. This command just sequences it.
 
 Argument: `$ARGUMENTS`
 
@@ -29,12 +29,35 @@ Argument: `$ARGUMENTS`
 
 ## Routing
 
-- `--bug <desc>` / `--fix <desc>` → bug sidetrack (below).
+{% if plugin_build | default(false) %}- `--init` → run **Bootstrap** (below), then stop.
+{% endif %}- `--bug <desc>` / `--fix <desc>` → bug sidetrack (below).
 - `--quick <idea>` → skip spec + plan: brainstorm briefly → `test-writer` (red)
   → lock → `implementer` → `verifier` → unlock → approval → commit.
 - `--resume [phase]` → read `.pipeline/state.json`, summarize, continue.
+- `--no-grill-plan` (modifier, combinable with `<idea>`) → skip phase 5b this run.
 - `<idea>` → full pipeline. If it looks like a <30-minute change, suggest
-  `--quick` first.
+  `--quick` first.{% if plugin_build | default(false) %} If `CONSTITUTION.md` is absent at the repo
+  root, run **Bootstrap** first.{% endif %}
+
+{% if plugin_build | default(false) %}## Bootstrap (`--init`)
+
+1. Copy `${CLAUDE_PLUGIN_ROOT}/templates/CONSTITUTION.md` to the repo root as
+   `CONSTITUTION.md`. Detect the project's language(s) (look for
+   `pyproject.toml`/`Cargo.toml`/`CMakeLists.txt`/`Makefile`) and fill in the
+   test + lint commands. Ask the user only about choices you cannot infer (e.g.
+   loop bound, whether to enable the optional security-review gate).
+2. Merge `${CLAUDE_PLUGIN_ROOT}/settings.template.json`'s `permissions` block
+   into the repo's `.claude/settings.json` (create it if missing; union the
+   `allow`/`ask` lists, don't clobber existing keys).
+3. Ensure `.gitignore` contains `.pipeline/`.
+4. Confirm what you set, in two lines. Done.
+
+{% endif %}
+
+**Split entry points (alternative to this monolith):** `/spec` `/plan` `/implement`
+`/review` `/ship` each run one stage and stop; pass `--continue` to flow through the
+rest. They share this command's phase definitions (the playbook). Use them for explicit
+stage-by-stage control; use `/feature` to run end-to-end.
 
 ## Full pipeline
 
@@ -45,7 +68,8 @@ paths, `loop_count`). Derive a kebab `<slug>` + today's date for filenames.
 2. **Spec** (main): per `spec_kit` — if true, drive spec-kit (`/speckit.specify`); else write `docs/design/<slug>-spec.md`. Acceptance criteria must be testable.
 3. **Grill** (main): load `{{ ai_folder }}/skills/grilling/SKILL.md`; stress-test the spec; update it + ADRs.
 4. **Finalize spec** (main): apply grill outcomes; self-review.
-5. **Plan** (subagent `ddd-architect`): Design-Driven plan → `docs/plans/<date>-<slug>.md` (interfaces, types, module boundaries, file-by-file changes, ordered steps). If `plan_grill: true`, grill the plan in-thread.
+5. **Plan** (subagent `ddd-architect`): Design-Driven plan → `docs/plans/<date>-<slug>.md` (interfaces, types, module boundaries, file-by-file changes, ordered steps).
+5b. **Grill the plan** (main): grill the plan in-thread (load the grilling skill) — stress-test its interfaces/boundaries before code. **Runs by default**; skip only if `plan_grill: false` or `--no-grill-plan` was passed.
 6. **TDD implement ⇄ verify**:
    a. Spawn `test-writer` → failing tests from the spec.
    b. **Create `.pipeline/tests.lock`.** Set `loop_count = 0`.

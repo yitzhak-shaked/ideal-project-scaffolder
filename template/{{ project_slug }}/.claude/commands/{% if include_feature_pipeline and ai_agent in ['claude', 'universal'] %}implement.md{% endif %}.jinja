@@ -1,0 +1,38 @@
+---
+description: Implement stage of the feature pipeline — TDD with the hard test/implementation gate. Stops after green unless --continue.
+argument-hint: [--continue]
+---
+
+# /implement — pipeline stage: TDD implement (phase 6)
+
+You run the **implement** stage of the feature pipeline as a standalone, explicit entry point.
+**Read `{{ ai_folder }}/instructions/general/feature-pipeline.md` first** — it is the single
+source of phase definitions, the hard gate, and the config (`spec_kit`, `loop_bound`,
+`plan_grill`, `security_gate`). This command does not restate phase logic; it selects which
+phase(s) to run and where to stop.
+
+Argument: `$ARGUMENTS`
+
+## What this runs
+Phase **6**: `test-writer` (red) → **lock** (`.pipeline/tests.lock`) → `implementer` (green) ⇄
+`verifier`, escalating to `debugger` on persistent/regressing failure, bounded by `loop_bound`.
+The hard gate is sacred — while locked, no one edits test files; a wrong test is a question for
+the user. Updates `.pipeline/state.json`.
+
+## Entry / exit (shared rule for all split commands)
+1. **Self-orient & locate state.** Read `.pipeline/state.json`. **Prerequisite:** a finalized
+   spec **and** a plan. If the plan is missing, **stop** and tell the user to `run /plan first`.
+2. **Run this stage** exactly as the playbook defines phase 6 (same subagents, same lock
+   lifecycle, same loop bound + escalation). Leave the lock **in place** at the end — `/review`
+   removes it after confirming tests weren't weakened.
+3. **Exit:**
+   - **default** → on green, update `.pipeline/state.json`, **stop**, print `next: /review`.
+   - **`--continue`** → do not stop; fall through review → ship to a local commit, honoring the
+     one hard stop (the phase-8 user-approval gate).
+
+## Prerequisites
+- A finalized spec and a plan (produced by `/spec` + `/plan`, or `/feature`).
+
+## Notes
+- If the loop hits `loop_bound` without green, escalate to the user with the latest report — a
+  question, not a command prompt. Never unlock or weaken a test to force green.

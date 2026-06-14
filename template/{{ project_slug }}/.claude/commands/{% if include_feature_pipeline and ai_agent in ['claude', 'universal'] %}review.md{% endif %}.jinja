@@ -1,0 +1,38 @@
+---
+description: Review stage of the feature pipeline — single independent review vs acceptance criteria. Stops after the verdict unless --continue.
+argument-hint: [--continue]
+---
+
+# /review — pipeline stage: review (phase 7)
+
+You run the **review** stage of the feature pipeline as a standalone, explicit entry point.
+**Read `{{ ai_folder }}/instructions/general/feature-pipeline.md` first** — it is the single
+source of phase definitions, the hard gate, and the config (`spec_kit`, `loop_bound`,
+`plan_grill`, `security_gate`). This command does not restate phase logic; it selects which
+phase(s) to run and where to stop.
+
+Argument: `$ARGUMENTS`
+
+## What this runs
+Phase **7**: spawn a single `code-reviewer` (not a debate panel) to judge the diff against the
+spec's acceptance criteria and confirm the tests were not weakened. On a clean verdict, **remove
+`.pipeline/tests.lock`**. If `security_gate: true` and the change touches auth/network/secrets,
+run a security review now. Updates `.pipeline/state.json`.
+
+## Entry / exit (shared rule for all split commands)
+1. **Self-orient & locate state.** Read `.pipeline/state.json`. **Prerequisite:** an implemented,
+   green diff (phase 6 complete). If implementation isn't done, **stop** and tell the user to
+   `run /implement first`.
+2. **Run this stage** as the playbook defines phase 7. On **CHANGES**, report the blocking
+   findings and stop (the fix loops back through `/implement`); on **APPROVE**, remove the lock.
+3. **Exit:**
+   - **default** → update `.pipeline/state.json`, **stop**, print `next: /ship` (on APPROVE) or
+     `next: /implement` (on CHANGES).
+   - **`--continue`** → on APPROVE, do not stop; proceed to ship, honoring the one hard stop (the
+     phase-8 user-approval gate). On CHANGES, `--continue` still stops — there is nothing to ship.
+
+## Prerequisites
+- A green implementation (produced by `/implement` or `/feature`).
+
+## Notes
+- Read-only review: the reviewer reports findings, it does not edit.

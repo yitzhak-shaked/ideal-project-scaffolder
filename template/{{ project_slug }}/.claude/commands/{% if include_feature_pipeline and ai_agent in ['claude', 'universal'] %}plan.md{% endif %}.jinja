@@ -1,0 +1,36 @@
+---
+description: Plan stage of the feature pipeline — Design-Driven plan, then grill it. Stops after the plan unless --continue.
+argument-hint: [--continue] [--no-grill-plan]
+---
+
+# /plan — pipeline stage: plan (phases 5 + 5b)
+
+You run the **plan** stage of the feature pipeline as a standalone, explicit entry point.
+**Read `{{ ai_folder }}/instructions/general/feature-pipeline.md` first** — it is the single
+source of phase definitions, the hard gate, and the config (`spec_kit`, `loop_bound`,
+`plan_grill`, `security_gate`). This command does not restate phase logic; it selects which
+phase(s) to run and where to stop.
+
+Argument: `$ARGUMENTS`
+
+## What this runs
+Phase **5** (Design-Driven plan via the `ddd-architect` subagent) then phase **5b** (grill the
+plan in-thread). Produces the plan and updates `.pipeline/state.json`.
+
+## Entry / exit (shared rule for all split commands)
+1. **Self-orient & locate state.** Read `.pipeline/state.json`. **Prerequisite:** a finalized
+   spec. If none exists (no spec path in state / no spec on disk), **stop** and tell the user to
+   `run /spec first`. Do not invent a spec.
+2. **Run this stage** as the playbook defines: spawn `ddd-architect` against the finalized spec
+   for the plan, then grill the plan in the main thread (load the grilling skill) **by default**.
+   Skip the grill only if `plan_grill: false` in the playbook config or `--no-grill-plan` is passed.
+3. **Exit:**
+   - **default** → write the plan, update `.pipeline/state.json`, **stop**, print `next: /implement`.
+   - **`--continue`** → do not stop; fall through the remaining phases (implement → review → ship)
+     to a local commit, honoring the one hard stop (the phase-8 user-approval gate).
+
+## Prerequisites
+- A finalized spec (produced by `/spec` or `/feature`).
+
+## Notes
+- `--no-grill-plan` skips phase 5b for this run.

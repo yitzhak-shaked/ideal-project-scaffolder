@@ -1,0 +1,38 @@
+---
+description: Spec stage of the feature pipeline — brainstorm, draft, grill, and finalize the spec. Stops after the spec unless --continue.
+argument-hint: <idea> [--continue]
+---
+
+# /spec — pipeline stage: spec (phases 1–4)
+
+You run the **spec** stage of the feature pipeline as a standalone, explicit entry point.
+**Read `{{ ai_folder }}/instructions/general/feature-pipeline.md` first** — it is the single
+source of phase definitions, the hard gate, and the config (`spec_kit`, `loop_bound`,
+`plan_grill`, `security_gate`). This command does not restate phase logic; it selects which
+phase(s) to run and where to stop.
+
+Argument: `$ARGUMENTS` (the idea, plus optional flags).
+
+## What this runs
+Phases **1–4** of the playbook: brainstorm → spec draft → grill the spec → finalize. Produces
+the spec (location per `spec_kit`) and updates `.pipeline/state.json`.
+
+## Entry / exit (shared rule for all split commands)
+1. **Self-orient & locate state.** Read `.pipeline/state.json` if present. `/spec` is the
+   pipeline entry, so it needs no prior artifact — it takes the `<idea>` from `$ARGUMENTS`. If a
+   run is already in progress past phase 4, say so and suggest `/plan` or `/feature --resume`
+   instead of restarting.
+2. **Run this stage** exactly as the playbook defines phases 1–4 (interactive, main thread:
+   brainstorming skill, then the grilling skill on the draft). Acceptance criteria must be
+   concrete and testable — they are the contract `/implement` turns into tests.
+3. **Exit:**
+   - **default** → write the spec, update `.pipeline/state.json`, **stop**, print `next: /plan`.
+   - **`--continue`** → do not stop; fall through the remaining phases (plan → grill plan →
+     implement → review → ship) to a local commit, honoring the one hard stop (the phase-8
+     user-approval gate). `/spec --continue <idea>` is therefore equivalent to `/feature <idea>`.
+
+## Prerequisites
+- None. This is the pipeline's entry point.
+
+## Notes
+- Trivial (<30-min) change? Prefer `/feature --quick <idea>` — it skips spec + plan entirely.

@@ -53,8 +53,10 @@ covers what.
   implement. See `general/sdd.md`; run `just sdd-init` once to install
   spec-kit's `/speckit.*` commands.
 {% endif %}{% if include_feature_pipeline %}- **Features run through the pipeline.** `/feature <idea>` drives brainstorm →
-  spec → grill → plan → TDD (with a hard test/implementation gate) → review →
-  one approval → document → commit (`general/feature-pipeline.md`).
+  spec → grill → plan → grill plan → TDD (with a hard test/implementation gate)
+  → review → one approval → document → commit (`general/feature-pipeline.md`).
+  Run it stage-by-stage instead with `/spec` `/plan` `/implement` `/review`
+  `/ship` — each stops after its stage; pass `--continue` to flow to the end.
 {% endif %}- **Micro-implementation is test-driven.** Write a failing test before the
   code that makes it pass (`general/tdd.md`; the `tdd-cycle` skill).
 - **Design is DDD.** Ubiquitous language, layered, pure domain
@@ -117,4 +119,6 @@ No MCP servers preconfigured. Add some to `.mcp.json` if needed.
   `update-changelog`{% if include_feature_pipeline %}, `grilling`{% endif %}{% if 'python' in languages %}, `python-uv-setup`{% endif %}.
 - Project subagents: `{{ ai_folder }}/agents/` — `code-reviewer`,
   `ddd-architect`, {% if include_feature_pipeline %}`test-writer`, `implementer`, `verifier`, `debugger`, `documenter`{% else %}`tdd-driver`{% endif %}{% if 'python' in languages %}, `python-refactorer`{% endif %}.{% if include_feature_pipeline %}
-- Feature pipeline: `/feature <idea>` (orchestrator) + `general/feature-pipeline.md` (playbook).{% endif %}
+- Feature pipeline: `/feature <idea>` (orchestrator) or the per-stage commands
+  `/spec` `/plan` `/implement` `/review` `/ship` (add `--continue` to chain) +
+  `general/feature-pipeline.md` (playbook).{% endif %}

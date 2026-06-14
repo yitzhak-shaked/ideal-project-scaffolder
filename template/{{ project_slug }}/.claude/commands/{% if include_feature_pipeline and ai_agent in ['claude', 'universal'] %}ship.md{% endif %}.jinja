@@ -1,0 +1,35 @@
+---
+description: Ship stage of the feature pipeline — user approval, document, and local commit. The pipeline tail.
+argument-hint: [--continue]
+---
+
+# /ship — pipeline stage: approve → document → commit (phases 8–10)
+
+You run the **ship** stage of the feature pipeline as a standalone, explicit entry point.
+**Read `{{ ai_folder }}/instructions/general/feature-pipeline.md` first** — it is the single
+source of phase definitions, the hard gate, and the config (`spec_kit`, `loop_bound`,
+`plan_grill`, `security_gate`). This command does not restate phase logic; it selects which
+phase(s) to run and where to stop.
+
+Argument: `$ARGUMENTS`
+
+## What this runs
+Phases **8–10**: the **user-approval gate** (the one hard stop) → `documenter` subagent (update
+affected docs + create the per-feature doc) → local `git commit` referencing the spec + plan
+paths. **Does not push.** Updates `.pipeline/state.json`.
+
+## Entry / exit (shared rule for all split commands)
+1. **Self-orient & locate state.** Read `.pipeline/state.json`. **Prerequisite:** a clean review
+   verdict (phase 7 APPROVE, lock removed). If review isn't clean, **stop** and tell the user to
+   `run /review first`.
+2. **Run this stage** as the playbook defines phases 8–10. Present spec, plan, diff summary,
+   test/lint results, and reviewer verdict; get an explicit go / revise / abort before documenting
+   and committing. Report the commit hash.
+3. **Exit:** this is the pipeline tail — it always runs through to the local commit. `--continue`
+   is accepted for symmetry but is a **no-op** here (there is no later phase).
+
+## Prerequisites
+- A clean review verdict with `.pipeline/tests.lock` removed (produced by `/review` or `/feature`).
+
+## Notes
+- Local commit only — never push (push stays on the `ask` list).
