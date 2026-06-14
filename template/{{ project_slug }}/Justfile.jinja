@@ -143,7 +143,7 @@ refactor FILE:
 # land in .claude/skills/speckit-* alongside the scaffolder's vendored
 # skills. See the SDD guide at {{ ai_folder }}/instructions/general/sdd.md
 sdd-init:
-    uvx --from git+https://github.com/github/spec-kit.git specify init --here{% if ai_agent in ['claude', 'copilot'] %} --ai {{ ai_agent }}{% else %} --ai claude{% endif %} --integration-options "--skills" --force
+    uvx --from git+https://github.com/github/spec-kit.git specify init --here{% if ai_agent in ['claude', 'copilot'] %} --integration {{ ai_agent }}{% else %} --integration claude{% endif %} --integration-options "--skills" --force
 
 # --- Project skills ---
 # Show the YAML frontmatter of each vendored / project-local skill so you

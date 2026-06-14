@@ -153,7 +153,7 @@ The scaffolder offers Spec-Driven Development as an opt-in via the
 
 - `general/sdd.md` is rendered (explains how SDD layers above DDD + TDD).
 - `Justfile` exposes a `sdd-init` recipe that runs
-  `specify init --here --ai <agent> --integration-options "--skills"`.
+  `specify init --here --integration <agent> --integration-options "--skills"`.
 
 The scaffolder does **not** pre-render `.specify/` or `specs/`. Those
 folders belong to spec-kit; the scaffolder yields ownership of them once

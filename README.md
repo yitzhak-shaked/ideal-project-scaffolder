@@ -96,7 +96,7 @@ commands and `.specify/` infrastructure:
 just sdd-init
 ```
 
-This installs spec-kit's CLI and runs `specify init --here --ai <agent>
+This installs spec-kit's CLI and runs `specify init --here --integration <agent>
 --integration-options "--skills"`, which lands the `/speckit.*` commands
 and `speckit-*` skills inside `.claude/skills/` alongside the vendored
 superpowers skills. spec-kit creates `.specify/memory/constitution.md`
